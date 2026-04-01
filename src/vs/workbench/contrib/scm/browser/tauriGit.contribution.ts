@@ -445,7 +445,18 @@ class TauriGitContribution extends Disposable implements IWorkbenchContribution 
 		}));
 
 		this._register(CommandsRegistry.registerCommand('tauri-git.openAllChanges', async () => {
-			// No-op for now — would open all changed files
+			try {
+				const commandService = (globalThis as any).__sidex_commandService;
+				if (!commandService) { return; }
+				const status = await invokeGit<TauriGitStatus>('git_status', { path: rootPath });
+				if (!status) { return; }
+				for (const change of status.changes) {
+					const fileUri = URI.joinPath(provider.rootUri, change.path);
+					await commandService.executeCommand('vscode.open', fileUri);
+				}
+			} catch (err) {
+				console.error('[TauriGit] open all changes failed', err);
+			}
 		}));
 
 		this._register(CommandsRegistry.registerCommand('tauri-git.stageFile', async (_accessor, ...args: any[]) => {
