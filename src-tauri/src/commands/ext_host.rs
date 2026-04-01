@@ -67,10 +67,24 @@ pub async fn start_extension_host(
 
     let node = find_node()?;
 
-    let server_js = app
-        .path()
-        .resolve("extension-host/server.js", tauri::path::BaseDirectory::Resource)
-        .map_err(|e| format!("failed to resolve server.js: {e}"))?;
+    let server_js = {
+        // Try Tauri resource path first (production)
+        let resource_path = app
+            .path()
+            .resolve("extension-host/server.js", tauri::path::BaseDirectory::Resource)
+            .ok();
+        
+        if let Some(ref p) = resource_path {
+            if p.exists() {
+                p.clone()
+            } else {
+                // Dev mode fallback: relative to Cargo manifest dir
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("extension-host/server.js")
+            }
+        } else {
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("extension-host/server.js")
+        }
+    };
 
     if !server_js.exists() {
         return Err(format!(
