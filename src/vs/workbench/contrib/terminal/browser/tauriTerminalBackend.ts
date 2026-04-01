@@ -210,11 +210,17 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 	}
 
 	shutdown(immediate: boolean): void {
-		if (this._backendId !== undefined && _invoke) {
-			_invoke('terminal_kill', { terminalId: this._backendId }).catch(() => { });
+		try {
+			if (this._backendId !== undefined && _invoke) {
+				_invoke('terminal_kill', { terminalId: this._backendId }).catch(() => { });
+			}
+			this._unlisten?.();
+			this._unlistenExit?.();
+		} catch {
+			// IPC channel may already be closed during page unload
 		}
-		this._unlisten?.();
-		this._unlistenExit?.();
+		this._unlisten = undefined;
+		this._unlistenExit = undefined;
 	}
 
 	input(data: string): void {
