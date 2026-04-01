@@ -120,6 +120,11 @@ export namespace Schemas {
 	export const vscodeFileResource = 'vscode-file';
 
 	/**
+	 * Scheme used by Tauri to serve bundled resources in production builds.
+	 */
+	export const tauri = 'tauri';
+
+	/**
 	 * Scheme used for temporary resources
 	 */
 	export const tmp = 'tmp';

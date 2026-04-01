@@ -8,6 +8,7 @@ import { generateTokensCSSForColorMap } from '../../../../editor/common/language
 import { TokenizationRegistry } from '../../../../editor/common/languages.js';
 import { DEFAULT_MARKDOWN_STYLES, renderMarkdownDocument } from '../../markdown/browser/markdownDocumentRenderer.js';
 import { URI } from '../../../../base/common/uri.js';
+import { Schemas } from '../../../../base/common/network.js';
 import { language } from '../../../../base/common/platform.js';
 import { joinPath } from '../../../../base/common/resources.js';
 import { assertReturnsDefined } from '../../../../base/common/types.js';
@@ -39,7 +40,8 @@ export class GettingStartedDetailsRenderer {
 		const css = colorMap ? generateTokensCSSForColorMap(colorMap) : '';
 
 		const inDev = document.location.protocol === 'http:';
-		const imgSrcCsp = inDev ? 'img-src https: data: http:' : 'img-src https: data:';
+		const isTauri = document.location.protocol === 'tauri:';
+		const imgSrcCsp = inDev ? 'img-src https: data: http:' : isTauri ? 'img-src https: data: tauri:' : 'img-src https: data:';
 
 		return `<!DOCTYPE html>
 		<html>
@@ -279,6 +281,18 @@ export class GettingStartedDetailsRenderer {
 				return contents;
 			}
 		} catch { }
+
+		if (path.scheme === Schemas.tauri) {
+			try {
+				const response = await fetch(path.toString(true));
+				if (response.ok) {
+					return await response.text();
+				}
+			} catch (e) {
+				this.notificationService.error('Error reading getting started document at `' + path + '`: ' + e);
+			}
+			return '';
+		}
 
 		try {
 			const localizedPath = path.with({ path: path.path.replace(/\.md$/, `.nls.${language}.md`) });

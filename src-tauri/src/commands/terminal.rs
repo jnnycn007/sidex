@@ -42,15 +42,21 @@ pub fn terminal_spawn(
     app: AppHandle,
     state: State<'_, Arc<TerminalStore>>,
     shell: Option<String>,
+    args: Option<Vec<String>>,
     cwd: Option<String>,
     env: Option<HashMap<String, String>>,
+    cols: Option<u16>,
+    rows: Option<u16>,
 ) -> Result<u32, String> {
     let pty_system = native_pty_system();
 
+    let pty_cols = cols.unwrap_or(80);
+    let pty_rows = rows.unwrap_or(24);
+
     let pair = pty_system
         .openpty(PtySize {
-            rows: 24,
-            cols: 80,
+            rows: pty_rows,
+            cols: pty_cols,
             pixel_width: 0,
             pixel_height: 0,
         })
@@ -66,12 +72,79 @@ pub fn terminal_spawn(
         })
     });
 
-    let mut cmd = CommandBuilder::new(&shell_path);
-    cmd.arg("-l");
-    cmd.env("TERM", "xterm-256color");
-    if let Some(dir) = cwd {
-        cmd.cwd(dir);
+    if !cfg!(target_os = "windows") {
+        let path = std::path::Path::new(&shell_path);
+        if !path.exists() {
+            let fallbacks = ["/bin/zsh", "/bin/bash", "/bin/sh"];
+            for fb in &fallbacks {
+                if std::path::Path::new(fb).exists() {
+                    return terminal_spawn(
+                        app,
+                        state,
+                        Some(fb.to_string()),
+                        args,
+                        cwd,
+                        env,
+                        cols,
+                        rows,
+                    );
+                }
+            }
+            return Err(format!(
+                "Shell '{}' not found, and no fallback shell available",
+                shell_path
+            ));
+        }
     }
+
+    let mut cmd = CommandBuilder::new(&shell_path);
+
+    if let Some(ref shell_args) = args {
+        for arg in shell_args {
+            cmd.arg(arg);
+        }
+    } else {
+        let shell_basename = std::path::Path::new(&shell_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+        match shell_basename {
+            "zsh" | "bash" | "sh" | "fish" => {
+                cmd.arg("-l");
+            }
+            _ => {}
+        }
+    }
+
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("COLORTERM", "truecolor");
+    cmd.env("TERM_PROGRAM", "SideX");
+
+    if let Ok(home) = std::env::var("HOME") {
+        cmd.env("HOME", &home);
+    }
+    if let Ok(user) = std::env::var("USER") {
+        cmd.env("USER", &user);
+    }
+    if let Ok(path) = std::env::var("PATH") {
+        cmd.env("PATH", &path);
+    }
+    if let Ok(lang) = std::env::var("LANG") {
+        cmd.env("LANG", &lang);
+    } else {
+        cmd.env("LANG", "en_US.UTF-8");
+    }
+
+    if let Some(ref dir) = cwd {
+        if !dir.is_empty() && std::path::Path::new(dir).is_dir() {
+            cmd.cwd(dir);
+        } else if let Ok(home) = std::env::var("HOME") {
+            cmd.cwd(&home);
+        }
+    } else if let Ok(home) = std::env::var("HOME") {
+        cmd.cwd(&home);
+    }
+
     if let Some(env_vars) = env {
         for (k, v) in env_vars {
             cmd.env(k, v);
@@ -113,8 +186,9 @@ pub fn terminal_spawn(
     }
 
     let terminal_id = id;
+    let state_clone = state.inner().clone();
     std::thread::spawn(move || {
-        let mut buf = [0u8; 4096];
+        let mut buf = [0u8; 8192];
         loop {
             match reader.read(&mut buf) {
                 Ok(0) => break,
@@ -131,11 +205,38 @@ pub fn terminal_spawn(
                 Err(_) => break,
             }
         }
+
+        let exit_code = {
+            let mut terminals = match state_clone.terminals.lock() {
+                Ok(t) => t,
+                Err(_) => {
+                    let _ = app.emit(
+                        "terminal-exit",
+                        TerminalExitEvent {
+                            terminal_id,
+                            exit_code: -1,
+                        },
+                    );
+                    return;
+                }
+            };
+            if let Some(handle) = terminals.get_mut(&terminal_id) {
+                match handle.child.try_wait() {
+                    Ok(Some(status)) => {
+                        if status.success() { 0 } else { 1 }
+                    }
+                    _ => 0,
+                }
+            } else {
+                0
+            }
+        };
+
         let _ = app.emit(
             "terminal-exit",
             TerminalExitEvent {
                 terminal_id,
-                exit_code: 0,
+                exit_code,
             },
         );
     });
@@ -205,6 +306,24 @@ pub fn terminal_kill(state: State<'_, Arc<TerminalStore>>, terminal_id: u32) -> 
         .map_err(|e| format!("Failed to kill terminal {}: {}", terminal_id, e))?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn terminal_get_pid(
+    state: State<'_, Arc<TerminalStore>>,
+    terminal_id: u32,
+) -> Result<u32, String> {
+    let terminals = state.terminals.lock().map_err(|e| e.to_string())?;
+    let handle = terminals
+        .get(&terminal_id)
+        .ok_or_else(|| format!("Terminal {} not found", terminal_id))?;
+
+    let pid = handle
+        .child
+        .process_id()
+        .ok_or_else(|| "Process ID not available".to_string())?;
+
+    Ok(pid)
 }
 
 #[tauri::command]

@@ -315,11 +315,11 @@ export class TerminalProcessManager extends Disposable implements ITerminalProce
 					try {
 						newProcess = await backend.createProcess(
 							shellLaunchConfig,
-							'', // TODO: Fix cwd
+							this.userHome || '',
 							cols,
 							rows,
 							this._terminalConfigurationService.config.unicodeVersion,
-							env, // TODO:
+							env,
 							options,
 							shouldPersist
 						);

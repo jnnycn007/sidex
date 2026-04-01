@@ -130,16 +130,21 @@ export class ThreadedBackgroundTokenizerFactory implements IDisposable {
 	}
 
 	private async _createWorkerProxy(): Promise<Proxied<TextMateTokenizationWorker> | null> {
-		const onigurumaModuleLocation: AppResourcePath = `${nodeModulesPath}/vscode-oniguruma`;
-		const onigurumaModuleLocationAsar: AppResourcePath = `${nodeModulesAsarPath}/vscode-oniguruma`;
-
-		const useAsar = canASAR && this._environmentService.isBuilt && !isWeb;
-		const onigurumaLocation: AppResourcePath = useAsar ? onigurumaModuleLocationAsar : onigurumaModuleLocation;
-		const onigurumaWASM: AppResourcePath = `${onigurumaLocation}/release/onig.wasm`;
+		// In SideX / web builds, use the public directory copy of onig.wasm
+		const onigurumaWASMUri = isWeb
+			? new URL('/onig.wasm', globalThis.location?.origin ?? '').href
+			: (() => {
+				const onigurumaModuleLocation: AppResourcePath = `${nodeModulesPath}/vscode-oniguruma`;
+				const onigurumaModuleLocationAsar: AppResourcePath = `${nodeModulesAsarPath}/vscode-oniguruma`;
+				const useAsar = canASAR && this._environmentService.isBuilt && !isWeb;
+				const onigurumaLocation: AppResourcePath = useAsar ? onigurumaModuleLocationAsar : onigurumaModuleLocation;
+				const onigurumaWASM: AppResourcePath = `${onigurumaLocation}/release/onig.wasm`;
+				return FileAccess.asBrowserUri(onigurumaWASM).toString(true);
+			})();
 
 		const createData: ICreateData = {
 			grammarDefinitions: this._grammarDefinitions,
-			onigurumaWASMUri: FileAccess.asBrowserUri(onigurumaWASM).toString(true),
+			onigurumaWASMUri,
 		};
 		const worker = this._worker = this._webWorkerService.createWorkerClient<TextMateTokenizationWorker>(
 			new WebWorkerDescriptor({

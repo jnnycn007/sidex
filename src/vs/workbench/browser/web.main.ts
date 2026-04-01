@@ -517,6 +517,10 @@ export class BrowserMain extends Disposable {
 			const provider = new TauriFileSystemProvider();
 			fileService.registerProvider(Schemas.file, provider);
 			logService.info('[SideX] Registered TauriFileSystemProvider for file:// scheme');
+
+			const vscodeFileProvider = new TauriFileSystemProvider();
+			fileService.registerProvider(Schemas.vscodeFileResource, vscodeFileProvider);
+			logService.info('[SideX] Registered TauriFileSystemProvider for vscode-file:// scheme');
 		} else if (WebFileSystemAccess.supported(mainWindow)) {
 			fileService.registerProvider(Schemas.file, new HTMLFileSystemProvider(indexedDB, handlesStore, logService));
 		}

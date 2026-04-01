@@ -208,6 +208,7 @@ pub fn run() {
             commands::terminal_write,
             commands::terminal_resize,
             commands::terminal_kill,
+            commands::terminal_get_pid,
             commands::get_default_shell,
             commands::search_files,
             commands::search_text,

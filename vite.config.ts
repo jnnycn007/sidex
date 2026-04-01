@@ -4,6 +4,7 @@ import * as path from 'path';
 
 export default defineConfig({
   clearScreen: false,
+  assetsInclude: ['**/*.wasm'],
   server: {
     port: 1420,
     strictPort: true,
@@ -11,7 +12,7 @@ export default defineConfig({
       ignored: ['**/src-tauri/**'],
     },
     fs: {
-      allow: ['.', 'extensions'],
+      allow: ['.', 'extensions', 'node_modules'],
     },
   },
   plugins: [
@@ -23,6 +24,10 @@ export default defineConfig({
         },
         {
           src: 'extensions-meta.json',
+          dest: '.',
+        },
+        {
+          src: 'node_modules/vscode-oniguruma/release/onig.wasm',
           dest: '.',
         },
       ],
@@ -50,7 +55,8 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['@tauri-apps/api', '@tauri-apps/plugin-dialog', '@tauri-apps/plugin-fs',
               '@tauri-apps/plugin-clipboard-manager', '@tauri-apps/plugin-shell',
-              '@tauri-apps/plugin-notification', '@tauri-apps/plugin-opener'],
+              '@tauri-apps/plugin-notification', '@tauri-apps/plugin-opener',
+              'vscode-textmate', 'vscode-oniguruma'],
   },
   worker: {
     format: 'es',

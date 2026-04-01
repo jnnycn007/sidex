@@ -80,6 +80,7 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 		private readonly _cwd: string,
 		private _cols: number,
 		private _rows: number,
+		private readonly _env?: IProcessEnvironment,
 	) {
 		super();
 		this.id = nextPtyId++;
@@ -93,6 +94,22 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 
 		try {
 			const shell = this._shellLaunchConfig.executable || undefined;
+			const args = this._shellLaunchConfig.args;
+
+			const envToPass: Record<string, string> = {};
+			if (this._env) {
+				for (const [k, v] of Object.entries(this._env)) {
+					if (v !== undefined && v !== null) {
+						envToPass[k] = String(v);
+					}
+				}
+			}
+			envToPass['TERM'] = 'xterm-256color';
+			envToPass['COLORTERM'] = 'truecolor';
+			envToPass['TERM_PROGRAM'] = 'SideX';
+			if (!envToPass['LANG']) {
+				envToPass['LANG'] = 'en_US.UTF-8';
+			}
 
 			const dataBuffer: string[] = [];
 			let attached = false;
@@ -115,16 +132,22 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 				}
 			});
 
+			let shellArgs: string[] | undefined;
+			if (Array.isArray(args)) {
+				shellArgs = args as string[];
+			} else if (typeof args === 'string') {
+				shellArgs = [args];
+			}
+
 			const backendId = await _invoke('terminal_spawn', {
 				shell: shell ?? null,
+				args: shellArgs ?? null,
 				cwd: this._cwd || null,
-				env: null,
+				env: Object.keys(envToPass).length > 0 ? envToPass : null,
+				cols: this._cols,
+				rows: this._rows,
 			}) as number;
 			this._backendId = backendId;
-
-			if (this._cols && this._rows) {
-				await _invoke('terminal_resize', { terminalId: backendId, cols: this._cols, rows: this._rows });
-			}
 
 			attached = true;
 			for (const data of dataBuffer) {
@@ -132,7 +155,13 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 			}
 			dataBuffer.length = 0;
 
-			this._onProcessReady.fire({ pid: backendId, cwd: this._cwd, windowsPty: undefined });
+			let pid = backendId;
+			try {
+				pid = await _invoke('terminal_get_pid', { terminalId: backendId }) as number;
+			} catch { }
+
+			this._onProcessReady.fire({ pid, cwd: this._cwd, windowsPty: undefined });
+			this._onDidChangeProperty.fire({ type: ProcessPropertyType.initialCwd, value: this._cwd });
 			return undefined;
 		} catch (e: any) {
 			console.error('[SideX Terminal] Failed to spawn:', e);
@@ -227,7 +256,12 @@ class TauriTerminalBackend extends Disposable implements ITerminalBackend {
 			const defaultShell = await this.getDefaultSystemShell();
 			shellLaunchConfig.executable = defaultShell;
 		}
-		return new TauriPty(shellLaunchConfig, cwd, cols, rows);
+		let resolvedCwd = cwd;
+		if (!resolvedCwd) {
+			const env = await this.getEnvironment();
+			resolvedCwd = env['HOME'] || '/';
+		}
+		return new TauriPty(shellLaunchConfig, resolvedCwd, cols, rows, _env);
 	}
 
 	async attachToProcess(_id: number): Promise<ITerminalChildProcess | undefined> { return undefined; }
@@ -254,26 +288,35 @@ class TauriTerminalBackend extends Disposable implements ITerminalBackend {
 		const defaultShell = await this.getDefaultSystemShell();
 		const defaultName = defaultShell.split('/').pop() || 'zsh';
 
-		const profiles: ITerminalProfile[] = [
-			{
+		const knownShells: { path: string; profileName: string }[] = [
+			{ path: '/bin/zsh', profileName: 'zsh' },
+			{ path: '/bin/bash', profileName: 'bash' },
+			{ path: '/bin/sh', profileName: 'sh' },
+		];
+
+		const profiles: ITerminalProfile[] = [];
+		const seen = new Set<string>();
+
+		for (const shell of knownShells) {
+			if (seen.has(shell.profileName)) {
+				continue;
+			}
+			seen.add(shell.profileName);
+			profiles.push({
+				profileName: shell.profileName,
+				path: shell.path,
+				isDefault: shell.profileName === defaultName,
+				isAutoDetected: false,
+			});
+		}
+
+		if (!seen.has(defaultName)) {
+			profiles.unshift({
 				profileName: defaultName,
 				path: defaultShell,
 				isDefault: true,
-				isAutoDetected: true,
-			}
-		];
-
-		const extraShells = ['/bin/bash', '/bin/zsh', '/bin/sh'];
-		for (const shell of extraShells) {
-			const name = shell.split('/').pop()!;
-			if (name !== defaultName) {
-				profiles.push({
-					profileName: name,
-					path: shell,
-					isDefault: false,
-					isAutoDetected: true,
-				});
-			}
+				isAutoDetected: false,
+			});
 		}
 
 		return profiles;

@@ -22,7 +22,7 @@ export const webviewResourceBaseHost = 'vscode-cdn.net';
 
 export const webviewRootResourceAuthority = `vscode-resource.${webviewResourceBaseHost}`;
 
-export const webviewGenericCspSource = `'self' https://*.${webviewResourceBaseHost}`;
+export const webviewGenericCspSource = `'self' https://*.${webviewResourceBaseHost}` + ((globalThis as any).__SIDEX_TAURI__ ? ' tauri:' : '');
 
 /**
  * Construct a uri that can load resources inside a webview
@@ -38,7 +38,7 @@ export const webviewGenericCspSource = `'self' https://*.${webviewResourceBaseHo
  * @param remoteInfo Optional information about the remote that specifies where `resource` should be resolved from.
  */
 export function asWebviewUri(resource: URI, remoteInfo?: WebviewRemoteInfo): URI {
-	if (resource.scheme === Schemas.http || resource.scheme === Schemas.https) {
+	if (resource.scheme === Schemas.http || resource.scheme === Schemas.https || resource.scheme === Schemas.tauri) {
 		return resource;
 	}
 

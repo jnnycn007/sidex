@@ -331,6 +331,7 @@ export class TextMateTokenizationFeature extends Disposable implements ITextMate
 				// Don't log this error message
 				return null;
 			}
+			this._logService.error(`[TextMate] Failed to create tokenization support for ${languageId}:`, err);
 			onUnexpectedError(err);
 			return null;
 		}
@@ -375,13 +376,16 @@ export class TextMateTokenizationFeature extends Disposable implements ITextMate
 	private _getVSCodeOniguruma(): Promise<typeof import('vscode-oniguruma')> {
 		if (!this._vscodeOniguruma) {
 			this._vscodeOniguruma = (async () => {
+				this._logService.trace('[TextMate] Loading vscode-oniguruma and WASM...');
 				const [vscodeOniguruma, wasm] = await Promise.all([importAMDNodeModule<typeof import('vscode-oniguruma')>('vscode-oniguruma', 'release/main.js'), this._loadVSCodeOnigurumaWASM()]);
+				this._logService.trace('[TextMate] Initializing oniguruma WASM...');
 				await vscodeOniguruma.loadWASM({
 					data: wasm,
 					print: (str: string) => {
 						this._debugModePrintFunc(str);
 					}
 				});
+				this._logService.trace('[TextMate] oniguruma WASM loaded successfully');
 				return vscodeOniguruma;
 			})();
 		}
@@ -390,10 +394,20 @@ export class TextMateTokenizationFeature extends Disposable implements ITextMate
 
 	private async _loadVSCodeOnigurumaWASM(): Promise<Response | ArrayBuffer> {
 		if (isWeb) {
-			const response = await fetch(resolveAmdNodeModulePath('vscode-oniguruma', 'release/onig.wasm'));
-			// Using the response directly only works if the server sets the MIME type 'application/wasm'.
-			// Otherwise, a TypeError is thrown when using the streaming compiler.
-			// We therefore use the non-streaming compiler :(.
+			const wasmUrl = new URL('/onig.wasm', globalThis.location?.origin ?? '').href;
+			let response: Response;
+			try {
+				response = await fetch(wasmUrl);
+				if (!response.ok) {
+					throw new Error(`Failed to fetch ${wasmUrl}: ${response.status}`);
+				}
+			} catch {
+				const fallbackUrl = resolveAmdNodeModulePath('vscode-oniguruma', 'release/onig.wasm');
+				response = await fetch(fallbackUrl);
+				if (!response.ok) {
+					throw new Error(`Failed to fetch onig.wasm from both ${wasmUrl} and ${fallbackUrl}`);
+				}
+			}
 			return await response.arrayBuffer();
 		} else {
 			const response = await fetch(canASAR && this._environmentService.isBuilt

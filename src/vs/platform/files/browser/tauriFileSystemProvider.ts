@@ -1,6 +1,7 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Tauri-backed file system provider for the `file` scheme.
- *  Delegates all I/O to Rust via `invoke()` from @tauri-apps/api/core.
+ *  SideX — Tauri-backed file system provider.
+ *  Handles `file` and `vscode-file` schemes by delegating all I/O to the
+ *  Rust backend via `invoke()` from @tauri-apps/api/core.
  *--------------------------------------------------------------------------------------------*/
 
 import { invoke } from '@tauri-apps/api/core';
@@ -53,7 +54,16 @@ export class TauriFileSystemProvider extends Disposable implements IFileSystemPr
 	private readonly _onDidChangeFile = this._register(new Emitter<readonly IFileChange[]>());
 	readonly onDidChangeFile = this._onDidChangeFile.event;
 
-	private static toPath(resource: URI): string {
+	/**
+	 * Extracts the local filesystem path from a URI.
+	 * For `file://` URIs this is just `fsPath`.
+	 * For `vscode-file://vscode-app/<path>` URIs, strip the authority
+	 * and return the raw path portion so the Rust backend can open it.
+	 */
+	static toPath(resource: URI): string {
+		if (resource.scheme === 'vscode-file') {
+			return decodeURIComponent(resource.path);
+		}
 		return resource.fsPath;
 	}
 
