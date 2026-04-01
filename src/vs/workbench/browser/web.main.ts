@@ -630,6 +630,8 @@ export class BrowserMain extends Disposable {
 			workspace = this.configuration.workspaceProvider.workspace;
 		}
 
+		console.log('[SideX] resolveWorkspace:', workspace, 'isFolderToOpen:', workspace && isFolderToOpen(workspace));
+
 		// Multi-root workspace
 		if (workspace && isWorkspaceToOpen(workspace)) {
 			return getWorkspaceIdentifier(workspace.workspaceUri);
@@ -637,10 +639,13 @@ export class BrowserMain extends Disposable {
 
 		// Single-folder workspace
 		if (workspace && isFolderToOpen(workspace)) {
-			return getSingleFolderWorkspaceIdentifier(workspace.folderUri);
+			const id = getSingleFolderWorkspaceIdentifier(workspace.folderUri);
+			console.log('[SideX] Resolved single-folder workspace:', id);
+			return id;
 		}
 
 		// Empty window workspace
+		console.log('[SideX] No workspace resolved, using empty window');
 		return UNKNOWN_EMPTY_WINDOW_WORKSPACE;
 	}
 }

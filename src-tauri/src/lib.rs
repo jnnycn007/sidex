@@ -218,6 +218,15 @@ pub fn run() {
             commands::storage_get,
             commands::storage_set,
             commands::storage_delete,
+            commands::git_status,
+            commands::git_diff,
+            commands::git_log,
+            commands::git_add,
+            commands::git_commit,
+            commands::git_checkout,
+            commands::git_branches,
+            commands::git_init,
+            commands::git_is_repo,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

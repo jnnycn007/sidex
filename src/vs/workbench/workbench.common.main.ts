@@ -256,6 +256,7 @@ import './contrib/git/browser/git.contributions.js';
 
 // SCM
 import './contrib/scm/browser/scm.contribution.js';
+import './contrib/scm/browser/tauriGit.contribution.js';
 
 // Debug
 import './contrib/debug/browser/debug.contribution.js';
