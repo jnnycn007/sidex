@@ -376,9 +376,6 @@ pub fn fs_temp_dir(prefix: Option<String>) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn fs_read_binary(path: String) -> Result<String, String> {
-    use base64::Engine;
-    let bytes =
-        fs::read(&path).map_err(|e| format!("Failed to read file '{}': {}", path, e))?;
-    Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
+pub fn fs_read_binary(path: String) -> Result<Vec<u8>, String> {
+    fs::read(&path).map_err(|e| format!("Failed to read file '{}': {}", path, e))
 }

@@ -30,14 +30,6 @@ export default defineConfig({
           src: 'node_modules/vscode-oniguruma/release/onig.wasm',
           dest: '.',
         },
-        {
-          src: 'node_modules/vscode-textmate/release/main.js',
-          dest: 'node_modules/vscode-textmate/release',
-        },
-        {
-          src: 'node_modules/vscode-oniguruma/release/main.js',
-          dest: 'node_modules/vscode-oniguruma/release',
-        },
       ],
     }),
   ],
