@@ -43,7 +43,6 @@ import './services/extensionManagement/browser/extensionsProfileScannerService.j
 import './services/extensions/browser/extensionsScannerService.js';
 import './services/extensionManagement/browser/webExtensionsScannerService.js';
 import './services/extensionManagement/common/extensionManagementServerService.js';
-import './services/mcp/browser/mcpWorkbenchManagementService.js';
 import './services/extensionManagement/browser/extensionGalleryManifestService.js';
 import './services/telemetry/browser/telemetryService.js';
 import './services/url/browser/urlService.js';
@@ -99,8 +98,6 @@ import { IDiagnosticsService, NullDiagnosticsService } from '../platform/diagnos
 import { ILanguagePackService } from '../platform/languagePacks/common/languagePacks.js';
 import { WebLanguagePacksService } from '../platform/languagePacks/browser/languagePacks.js';
 import { IWebContentExtractorService, NullWebContentExtractorService, ISharedWebContentExtractorService, NullSharedWebContentExtractorService } from '../platform/webContentExtractor/common/webContentExtractor.js';
-import { IMcpGalleryManifestService } from '../platform/mcp/common/mcpGalleryManifest.js';
-import { WorkbenchMcpGalleryManifestService } from './services/mcp/browser/mcpGalleryManifestService.js';
 import { UserDataSyncResourceProviderService } from '../platform/userDataSync/common/userDataSyncResourceProvider.js';
 
 registerSingleton(IWorkbenchExtensionManagementService, ExtensionManagementService, InstantiationType.Delayed);
@@ -121,7 +118,6 @@ registerSingleton(IDiagnosticsService, NullDiagnosticsService, InstantiationType
 registerSingleton(ILanguagePackService, WebLanguagePacksService, InstantiationType.Delayed);
 registerSingleton(IWebContentExtractorService, NullWebContentExtractorService, InstantiationType.Delayed);
 registerSingleton(ISharedWebContentExtractorService, NullSharedWebContentExtractorService, InstantiationType.Delayed);
-registerSingleton(IMcpGalleryManifestService, WorkbenchMcpGalleryManifestService, InstantiationType.Delayed);
 
 //#endregion
 

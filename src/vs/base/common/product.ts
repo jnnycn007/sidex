@@ -114,16 +114,6 @@ export interface IProductConfiguration {
 		readonly accessSKUs?: string[];
 	};
 
-	readonly mcpGallery?: {
-		readonly serviceUrl: string;
-		readonly itemWebUrl: string;
-		readonly publisherUrl: string;
-		readonly supportUrl: string;
-		readonly privacyPolicyUrl: string;
-		readonly termsOfServiceUrl: string;
-		readonly reportUrl: string;
-	};
-
 	readonly extensionPublisherOrgs?: readonly string[];
 	readonly trustedExtensionPublishers?: readonly string[];
 
@@ -138,7 +128,6 @@ export interface IProductConfiguration {
 	readonly languageExtensionTips?: readonly string[];
 	readonly trustedExtensionUrlPublicKeys?: IStringDictionary<string[]>;
 	readonly trustedExtensionAuthAccess?: string[] | IStringDictionary<string[]>;
-	readonly trustedMcpAuthAccess?: string[] | IStringDictionary<string[]>;
 	readonly inheritAuthAccountPreference?: IStringDictionary<string[]>;
 	readonly trustedExtensionProtocolHandlers?: readonly string[];
 
@@ -368,7 +357,6 @@ export interface IDefaultChatAgent {
 	readonly entitlementUrl: string;
 	readonly entitlementSignupLimitedUrl: string;
 	readonly tokenEntitlementUrl: string;
-	readonly mcpRegistryDataUrl: string;
 
 	readonly chatQuotaExceededContext: string;
 	readonly completionsQuotaExceededContext: string;

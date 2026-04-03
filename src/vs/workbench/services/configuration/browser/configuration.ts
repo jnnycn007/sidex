@@ -172,7 +172,6 @@ export class UserConfiguration extends Disposable {
 	constructor(
 		private settingsResource: URI,
 		private tasksResource: URI | undefined,
-		private mcpResource: URI | undefined,
 		private configurationParseOptions: ConfigurationParseOptions,
 		private readonly fileService: IFileService,
 		private readonly uriIdentityService: IUriIdentityService,
@@ -184,10 +183,9 @@ export class UserConfiguration extends Disposable {
 		this.reloadConfigurationScheduler = this._register(new RunOnceScheduler(() => this.userConfiguration.value!.loadConfiguration().then(configurationModel => this._onDidChangeConfiguration.fire(configurationModel)), 50));
 	}
 
-	async reset(settingsResource: URI, tasksResource: URI | undefined, mcpResource: URI | undefined, configurationParseOptions: ConfigurationParseOptions): Promise<ConfigurationModel> {
+	async reset(settingsResource: URI, tasksResource: URI | undefined, configurationParseOptions: ConfigurationParseOptions): Promise<ConfigurationModel> {
 		this.settingsResource = settingsResource;
 		this.tasksResource = tasksResource;
-		this.mcpResource = mcpResource;
 		this.configurationParseOptions = configurationParseOptions;
 		return this.doReset();
 	}

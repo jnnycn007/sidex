@@ -16,14 +16,14 @@ This is the most common change. No version bump needed.
    ```typescript
    export interface IToolCallState {
        // ...existing fields...
-       readonly mcpServerName?: string; // new optional field
+       readonly displayName?: string; // new optional field
    }
    ```
 2. Add the same optional field to the corresponding type in the **tip** version file (currently `versions/v1.ts`):
    ```typescript
    export interface IV1_ToolCallState {
        // ...existing fields...
-       readonly mcpServerName?: string;
+       readonly displayName?: string;
    }
    ```
 3. Compile. If it passes, you're done. If it fails, you tried to do something incompatible.

@@ -186,8 +186,6 @@ export interface IAgentToolStartEvent extends IAgentProgressEventBase {
 	readonly language?: string;
 	/** Serialized JSON of the tool arguments, if available. */
 	readonly toolArguments?: string;
-	readonly mcpServerName?: string;
-	readonly mcpToolName?: string;
 	readonly parentToolCallId?: string;
 }
 

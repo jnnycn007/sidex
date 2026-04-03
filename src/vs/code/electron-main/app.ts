@@ -133,11 +133,6 @@ import { IAuxiliaryWindowsMainService } from '../../platform/auxiliaryWindow/ele
 import { AuxiliaryWindowsMainService } from '../../platform/auxiliaryWindow/electron-main/auxiliaryWindowsMainService.js';
 import { normalizeNFC } from '../../base/common/normalization.js';
 import { ICSSDevelopmentService, CSSDevelopmentService } from '../../platform/cssDev/node/cssDevService.js';
-import { INativeMcpDiscoveryHelperService, NativeMcpDiscoveryHelperChannelName } from '../../platform/mcp/common/nativeMcpDiscoveryHelper.js';
-import { NativeMcpDiscoveryHelperService } from '../../platform/mcp/node/nativeMcpDiscoveryHelperService.js';
-import { IMcpGatewayService, McpGatewayChannelName } from '../../platform/mcp/common/mcpGateway.js';
-import { McpGatewayService } from '../../platform/mcp/node/mcpGatewayService.js';
-import { McpGatewayChannel } from '../../platform/mcp/node/mcpGatewayChannel.js';
 import { IWebContentExtractorService } from '../../platform/webContentExtractor/common/webContentExtractor.js';
 import { NativeWebContentExtractorService } from '../../platform/webContentExtractor/electron-main/webContentExtractorService.js';
 import ErrorTelemetry from '../../platform/telemetry/electron-main/errorTelemetry.js';
@@ -625,8 +620,6 @@ export class CodeApplication extends Disposable {
 		services.set(IExtensionsScannerService, new SyncDescriptor(ExtensionsScannerService, undefined, true));
 		services.set(IUtilityProcessWorkerMainService, new SyncDescriptor(UtilityProcessWorkerMainService, undefined, true));
 		services.set(IProxyAuthService, new SyncDescriptor(ProxyAuthService));
-		services.set(INativeMcpDiscoveryHelperService, new SyncDescriptor(NativeMcpDiscoveryHelperService));
-		services.set(IMcpGatewayService, new SyncDescriptor(McpGatewayService));
 		services.set(ICSSDevelopmentService, new SyncDescriptor(CSSDevelopmentService, undefined, true));
 
 		await Promises.settled([backupMainService.initialize(), workspacesManagementMainService.initialize()]);
@@ -694,10 +687,6 @@ export class CodeApplication extends Disposable {
 		mainProcessElectronServer.registerChannel(TerminalIpcChannels.LocalPty, ProxyChannel.fromService(accessor.get(ILocalPtyService), disposables));
 		mainProcessElectronServer.registerChannel('externalTerminal', ProxyChannel.fromService(accessor.get(IExternalTerminalMainService), disposables));
 		mainProcessElectronServer.registerChannel('sandboxHelper', ProxyChannel.fromService(accessor.get(ISandboxHelperMainService), disposables));
-
-		mainProcessElectronServer.registerChannel(NativeMcpDiscoveryHelperChannelName, ProxyChannel.fromService(accessor.get(INativeMcpDiscoveryHelperService), disposables));
-		const mcpGatewayChannel = this._register(new McpGatewayChannel(mainProcessElectronServer, accessor.get(IMcpGatewayService), accessor.get(ILoggerMainService)));
-		mainProcessElectronServer.registerChannel(McpGatewayChannelName, mcpGatewayChannel);
 
 		const loggerChannel = new LoggerChannel(accessor.get(ILoggerMainService));
 		mainProcessElectronServer.registerChannel('logger', loggerChannel);

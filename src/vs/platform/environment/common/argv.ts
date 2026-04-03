@@ -113,7 +113,6 @@ export interface NativeParsedArgs {
 	'export-policy-data'?: string;
 	'export-default-keybindings'?: string;
 	'install-source'?: string;
-	'add-mcp'?: string[];
 	'disable-updates'?: boolean;
 	'transient'?: boolean;
 	'use-inmemory-secretstorage'?: boolean;

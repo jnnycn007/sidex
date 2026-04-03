@@ -50,7 +50,6 @@ interface IDefaultAccountConfig {
 	};
 	readonly tokenEntitlementUrl: string;
 	readonly entitlementUrl: string;
-	readonly mcpRegistryDataUrl: string;
 }
 
 export const DEFAULT_ACCOUNT_SIGN_IN_COMMAND = 'workbench.actions.accounts.signIn';
@@ -69,22 +68,6 @@ interface ITokenEntitlementsResponse {
 	token: string;
 }
 
-interface IMcpRegistryProvider {
-	readonly url: string;
-	readonly registry_access: 'allow_all' | 'registry_only';
-	readonly owner?: {
-		readonly login: string;
-		readonly id: number;
-		readonly type: string;
-		readonly parent_login: string | null;
-		readonly priority: number;
-	};
-}
-
-interface IMcpRegistryResponse {
-	readonly mcp_registries: ReadonlyArray<IMcpRegistryProvider>;
-}
-
 function toDefaultAccountConfig(defaultChatAgent: IDefaultChatAgent | undefined): IDefaultAccountConfig {
 	if (!defaultChatAgent) {
 		return {
@@ -96,10 +79,9 @@ function toDefaultAccountConfig(defaultChatAgent: IDefaultChatAgent | undefined)
 				enterpriseProviderUriSetting: '',
 				scopes: [],
 			},
-			tokenEntitlementUrl: '',
-			entitlementUrl: '',
-			mcpRegistryDataUrl: '',
-		} as any;
+		tokenEntitlementUrl: '',
+		entitlementUrl: '',
+	} as any;
 	}
 	return {
 		preferredExtensions: [
@@ -121,7 +103,6 @@ function toDefaultAccountConfig(defaultChatAgent: IDefaultChatAgent | undefined)
 		},
 		entitlementUrl: defaultChatAgent.entitlementUrl,
 		tokenEntitlementUrl: defaultChatAgent.tokenEntitlementUrl,
-		mcpRegistryDataUrl: defaultChatAgent.mcpRegistryDataUrl,
 	};
 }
 
@@ -219,7 +200,6 @@ interface IAccountPolicyData {
 	readonly policyData: IPolicyData;
 	readonly entitlementsFetchedAt?: number;
 	readonly tokenEntitlementsFetchedAt?: number;
-	readonly mcpRegistryDataFetchedAt?: number;
 }
 
 interface ICachedAccountData {
@@ -311,10 +291,10 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 				// ICachedAccountData ({ accountPolicyData, copilotTokenInfo }).
 				// This branch migrates the old flat format to the new shape and
 				// re-stores it so subsequent reads use the new format directly.
-				const { accountId, policyData, tokenEntitlementsFetchedAt, mcpRegistryDataFetchedAt, copilotTokenInfo } = parsed;
+				const { accountId, policyData, tokenEntitlementsFetchedAt, copilotTokenInfo } = parsed;
 				if (accountId && policyData) {
 					this.logService.debug('[DefaultAccount] Initializing with cached policy data (migrating old format)');
-					const result: ICachedAccountData = { accountPolicyData: { accountId, policyData, tokenEntitlementsFetchedAt, mcpRegistryDataFetchedAt }, copilotTokenInfo };
+					const result: ICachedAccountData = { accountPolicyData: { accountId, policyData, tokenEntitlementsFetchedAt }, copilotTokenInfo };
 					this.storageService.store(CACHED_POLICY_DATA_KEY, JSON.stringify(result), StorageScope.APPLICATION, StorageTarget.MACHINE);
 					return result;
 				}
@@ -554,23 +534,12 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 			const tokenEntitlementsResult = entitlementsData?.chat_enabled ? await this.getTokenEntitlements(sessions, accountPolicyData) : undefined;
 
 			const tokenEntitlementsFetchedAt: number | undefined = tokenEntitlementsResult?.fetchedAt;
-			let mcpRegistryDataFetchedAt: number | undefined;
 			let policyData: Mutable<IPolicyData> | undefined = accountPolicyData?.policyData ? { ...accountPolicyData.policyData } : undefined;
 			if (tokenEntitlementsResult?.data) {
 				const tokenEntitlementsData = tokenEntitlementsResult.data;
 				policyData = policyData ?? {};
 				policyData.chat_agent_enabled = tokenEntitlementsData.policyData.chat_agent_enabled;
 				policyData.chat_preview_features_enabled = tokenEntitlementsData.policyData.chat_preview_features_enabled;
-				policyData.mcp = tokenEntitlementsData.policyData.mcp;
-				if (policyData.mcp) {
-					const mcpRegistryResult = await this.getMcpRegistryProvider(sessions, accountPolicyData);
-					mcpRegistryDataFetchedAt = mcpRegistryResult?.fetchedAt;
-					policyData.mcpRegistryUrl = mcpRegistryResult?.data?.url;
-					policyData.mcpAccess = mcpRegistryResult?.data?.registry_access;
-				} else {
-					policyData.mcpRegistryUrl = undefined;
-					policyData.mcpAccess = undefined;
-				}
 			}
 
 			const defaultAccount: IDefaultAccount = {
@@ -582,7 +551,7 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 			};
 			this.logService.debug('[DefaultAccount] Successfully created default account for provider:', authenticationProvider.id);
 			const accountPolicyResult: IAccountPolicyData | null = policyData || entitlementsFetchedAt
-				? { accountId, policyData: policyData ?? {}, entitlementsFetchedAt, tokenEntitlementsFetchedAt, mcpRegistryDataFetchedAt }
+				? { accountId, policyData: policyData ?? {}, entitlementsFetchedAt, tokenEntitlementsFetchedAt }
 				: null;
 			return {
 				defaultAccount,
@@ -677,11 +646,8 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 				const tokenMap = this.extractFromToken(chatData.token);
 				return {
 					policyData: {
-						// Editor preview features are disabled if the flag is present and set to 0
 						chat_preview_features_enabled: tokenMap.get('editor_preview_features') !== '0',
 						chat_agent_enabled: tokenMap.get('agent_mode') !== '0',
-						// MCP is only enabled if the flag is explicitly present and set to 1
-						mcp: tokenMap.get('mcp') === '1',
 					},
 					copilotTokenInfo: {
 						sn: tokenMap.get('sn'),
@@ -736,52 +702,6 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 			this.logService.error('[DefaultAccount] Failed to fetch entitlements', getErrorMessage(error));
 		}
 		return { data: undefined, fetchedAt: Date.now() };
-	}
-
-	private async getMcpRegistryProvider(sessions: AuthenticationSession[], accountPolicyData: IAccountPolicyData | undefined): Promise<{ data: IMcpRegistryProvider | null; fetchedAt: number } | undefined> {
-		if (accountPolicyData?.mcpRegistryDataFetchedAt && !this.isDataStale(accountPolicyData.mcpRegistryDataFetchedAt)) {
-			this.logService.debug('[DefaultAccount] Using last fetched MCP registry data');
-			const data = accountPolicyData.policyData.mcpRegistryUrl && accountPolicyData.policyData.mcpAccess ? { url: accountPolicyData.policyData.mcpRegistryUrl, registry_access: accountPolicyData.policyData.mcpAccess } : null;
-			return { data, fetchedAt: accountPolicyData.mcpRegistryDataFetchedAt };
-		}
-		const data = await this.requestMcpRegistryProvider(sessions);
-		return !isUndefined(data) ? { data, fetchedAt: Date.now() } : undefined;
-	}
-
-	private async requestMcpRegistryProvider(sessions: AuthenticationSession[]): Promise<IMcpRegistryProvider | null | undefined> {
-		const mcpRegistryDataUrl = this.getMcpRegistryDataUrl();
-		if (!mcpRegistryDataUrl) {
-			this.logService.debug('[DefaultAccount] No MCP registry data URL found');
-			return null;
-		}
-
-		this.logService.debug('[DefaultAccount] Fetching MCP registry data from:', mcpRegistryDataUrl);
-		const response = await this.request(mcpRegistryDataUrl, 'GET', undefined, sessions, CancellationToken.None, 'defaultAccount.mcpRegistryProvider');
-		if (!response) {
-			return undefined;
-		}
-
-		if (!isSuccess(response)) {
-			if (isClientError(response)) {
-				this.logService.debug(`[DefaultAccount] Received ${response.res.statusCode} for MCP registry data, treating as no registry available.`);
-				return null;
-			}
-			this.logService.debug(`[DefaultAccount] unexpected status code ${response.res.statusCode} while fetching MCP registry data`);
-			return undefined;
-		}
-
-		try {
-			const data = await asJson<IMcpRegistryResponse>(response);
-			if (data) {
-				this.logService.debug('Fetched MCP registry providers', data.mcp_registries);
-				return data.mcp_registries[0] ?? null;
-			}
-			this.logService.debug('No MCP registry providers content found in response');
-			return null;
-		} catch (error) {
-			this.logService.error('Failed to fetch MCP registry providers', getErrorMessage(error));
-			return undefined;
-		}
 	}
 
 	private async request(url: string, type: 'GET', body: undefined, sessions: AuthenticationSession[], token: CancellationToken, callSite: string): Promise<IRequestContext | undefined>;
@@ -863,22 +783,6 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 		}
 
 		return this.defaultAccountConfig.tokenEntitlementUrl;
-	}
-
-	private getMcpRegistryDataUrl(): string | undefined {
-		if (this.getDefaultAccountAuthenticationProvider().enterprise) {
-			try {
-				const enterpriseUrl = this.getEnterpriseUrl();
-				if (!enterpriseUrl) {
-					return undefined;
-				}
-				return `${enterpriseUrl.protocol}//api.${enterpriseUrl.hostname}${enterpriseUrl.port ? ':' + enterpriseUrl.port : ''}/copilot/mcp_registry`;
-			} catch (error) {
-				this.logService.error(error);
-			}
-		}
-
-		return this.defaultAccountConfig.mcpRegistryDataUrl;
 	}
 
 	getDefaultAccountAuthenticationProvider(): IDefaultAccountAuthenticationProvider {

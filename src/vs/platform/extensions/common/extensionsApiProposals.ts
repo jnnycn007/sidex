@@ -318,13 +318,6 @@ const _allApiProposals = {
 	markdownAlertSyntax: {
 		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.markdownAlertSyntax.d.ts',
 	},
-	mcpServerDefinitions: {
-		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.mcpServerDefinitions.d.ts',
-		version: 1
-	},
-	mcpToolDefinitions: {
-		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.mcpToolDefinitions.d.ts',
-	},
 	multiDocumentHighlightProvider: {
 		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.multiDocumentHighlightProvider.d.ts',
 	},

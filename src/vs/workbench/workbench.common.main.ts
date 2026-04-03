@@ -54,7 +54,6 @@ import './browser/parts/statusbar/statusbarPart.js';
 
 import '../platform/actions/common/actions.contribution.js';
 import '../platform/undoRedo/common/undoRedoService.js';
-import '../platform/mcp/common/mcpResourceScannerService.js';
 import './services/workspaces/common/editSessionIdentityService.js';
 import './services/workspaces/common/canonicalUriService.js';
 import './services/extensions/browser/extensionUrlHandler.js';
@@ -107,9 +106,6 @@ import './services/authentication/browser/authenticationService.js';
 import './services/authentication/browser/authenticationExtensionsService.js';
 import './services/authentication/browser/authenticationUsageService.js';
 import './services/authentication/browser/authenticationAccessService.js';
-import './services/authentication/browser/authenticationMcpUsageService.js';
-import './services/authentication/browser/authenticationMcpAccessService.js';
-import './services/authentication/browser/authenticationMcpService.js';
 import './services/authentication/browser/dynamicAuthenticationProviderStorageService.js';
 import './services/authentication/browser/authenticationQueryService.js';
 import '../platform/hover/browser/hoverService.js';
@@ -154,9 +150,6 @@ import { ExtensionStorageService, IExtensionStorageService } from '../platform/e
 import { IUserDataSyncLogService } from '../platform/userDataSync/common/userDataSync.js';
 import { UserDataSyncLogService } from '../platform/userDataSync/common/userDataSyncLog.js';
 import { AllowedExtensionsService } from '../platform/extensionManagement/common/allowedExtensionsService.js';
-import { IAllowedMcpServersService, IMcpGalleryService } from '../platform/mcp/common/mcpManagement.js';
-import { McpGalleryService } from '../platform/mcp/common/mcpGalleryService.js';
-import { AllowedMcpServersService } from '../platform/mcp/common/allowedMcpServersService.js';
 import { IWebWorkerService } from '../platform/webWorker/browser/webWorkerService.js';
 import { WebWorkerService } from '../platform/webWorker/browser/webWorkerServiceImpl.js';
 
@@ -174,8 +167,6 @@ registerSingleton(ITextResourceConfigurationService, TextResourceConfigurationSe
 registerSingleton(IDownloadService, DownloadService, InstantiationType.Delayed);
 registerSingleton(IOpenerService, OpenerService, InstantiationType.Delayed);
 registerSingleton(IWebWorkerService, WebWorkerService, InstantiationType.Delayed);
-registerSingleton(IMcpGalleryService, McpGalleryService, InstantiationType.Delayed);
-registerSingleton(IAllowedMcpServersService, AllowedMcpServersService, InstantiationType.Delayed);
 
 //#endregion
 
@@ -377,9 +368,6 @@ import './contrib/userDataProfile/browser/userDataProfile.contribution.js';
 
 // Continue Edit Session
 import './contrib/editSessions/browser/editSessions.contribution.js';
-
-// Remote Coding Agents
-import './contrib/remoteCodingAgents/browser/remoteCodingAgents.contribution.js';
 
 // Code Actions
 import './contrib/codeActions/browser/codeActions.contribution.js';
