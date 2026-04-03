@@ -8006,7 +8006,6 @@
       },
       "enabledApiProposals": [
         "canonicalUriProvider",
-        "chatSessionsProvider",
         "contribEditSessions",
         "contribShareMenu",
         "contribSourceControlHistoryItemMenu",

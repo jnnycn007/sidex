@@ -29,7 +29,7 @@
         "common": { "strategy": "reuse", "status": "done" },
         "browser": { "strategy": "reuse", "status": "done" },
         "contrib": { "strategy": "reuse", "status": "done", "contribution_count": 57 },
-        "standalone": { "strategy": "reuse", "status": "done" }
+        "standalone": { "strategy": "removed", "status": "deleted" }
       }
     },
     "workbench": {

@@ -20,7 +20,7 @@ export default defineConfig({
   },
   build: {
     target: ['es2022', 'chrome100'],
-    minify: 'esbuild',
+    minify: false,
     sourcemap: false,
     chunkSizeWarningLimit: 25000,
     rollupOptions: {

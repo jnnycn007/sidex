@@ -119,7 +119,7 @@ Extension Host               →       Sidecar process (in progress)
 | `common/` | Reuse directly | Done |
 | `browser/` | Reuse directly (DOM) | Done |
 | `contrib/` (57 contributions) | Reuse directly | Done |
-| `standalone/` | Reuse directly | Done |
+| `standalone/` | Removed (not needed in Tauri) | Deleted |
 
 ### workbench/ (IDE Shell)
 | Sublayer | Strategy | Status |

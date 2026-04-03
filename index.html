@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: https://open-vsx.org https://openvsx.eclipsecontent.org https://ipc.localhost ws: wss:; img-src 'self' data: https:; font-src 'self' data:; worker-src 'self' blob:;" />
     <title>SideX</title>
     <script>
       // MUST run before any VSCode module — sets globals they depend on
@@ -26,9 +25,9 @@
         commit: '',
         date: new Date().toISOString(),
         quality: 'stable',
-        reportIssueUrl: 'https://github.com/Razshy/sidexvs/issues/new',
+        reportIssueUrl: 'https://github.com/sidenai/sidex/issues/new',
         licenseName: 'MIT',
-        licenseUrl: 'https://github.com/Razshy/sidexvs/blob/main/LICENSE',
+        licenseUrl: 'https://github.com/sidenai/sidex/blob/main/LICENSE',
         extensionsGallery: {
           serviceUrl: 'https://open-vsx.org/vscode/gallery',
           itemUrl: 'https://open-vsx.org/vscode/item',
@@ -36,15 +35,6 @@
           controlUrl: '',
           nlsBaseUrl: '',
           publisherUrl: '',
-        },
-        defaultChatAgent: {
-          extensionId: '',
-          chatExtensionId: '',
-          provider: {
-            default: { id: '', name: '' },
-            enterprise: { id: '', name: '' },
-          },
-          providerScopes: [],
         },
       };
     </script>
