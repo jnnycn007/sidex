@@ -128,15 +128,35 @@ pub fn search_files(
     pattern: String,
     options: Option<SearchFileOptions>,
 ) -> Result<Vec<FileMatch>, String> {
-    let max_results = options.as_ref().and_then(|o| o.max_results).unwrap_or(DEFAULT_MAX_RESULTS);
-    let include_hidden = options.as_ref().and_then(|o| o.include_hidden).unwrap_or(false);
-    let include_set = options.as_ref()
+    let max_results = options
+        .as_ref()
+        .and_then(|o| o.max_results)
+        .unwrap_or(DEFAULT_MAX_RESULTS);
+    let include_hidden = options
+        .as_ref()
+        .and_then(|o| o.include_hidden)
+        .unwrap_or(false);
+    let include_set = options
+        .as_ref()
         .and_then(|o| o.include.as_deref())
-        .and_then(|v| if v.is_empty() { None } else { Some(build_globset(v)) })
+        .and_then(|v| {
+            if v.is_empty() {
+                None
+            } else {
+                Some(build_globset(v))
+            }
+        })
         .flatten();
-    let exclude_set = options.as_ref()
+    let exclude_set = options
+        .as_ref()
         .and_then(|o| o.exclude.as_deref())
-        .and_then(|v| if v.is_empty() { None } else { Some(build_globset(v)) })
+        .and_then(|v| {
+            if v.is_empty() {
+                None
+            } else {
+                Some(build_globset(v))
+            }
+        })
         .flatten();
 
     let mut scored: Vec<FileMatch> = Vec::new();
@@ -189,18 +209,44 @@ pub fn search_text(
     query: String,
     options: Option<SearchTextOptions>,
 ) -> Result<Vec<TextMatch>, String> {
-    let max_results = options.as_ref().and_then(|o| o.max_results).unwrap_or(DEFAULT_MAX_RESULTS);
-    let case_sensitive = options.as_ref().and_then(|o| o.case_sensitive).unwrap_or(false);
+    let max_results = options
+        .as_ref()
+        .and_then(|o| o.max_results)
+        .unwrap_or(DEFAULT_MAX_RESULTS);
+    let case_sensitive = options
+        .as_ref()
+        .and_then(|o| o.case_sensitive)
+        .unwrap_or(false);
     let is_regex = options.as_ref().and_then(|o| o.is_regex).unwrap_or(false);
-    let include_hidden = options.as_ref().and_then(|o| o.include_hidden).unwrap_or(false);
-    let max_file_size = options.as_ref().and_then(|o| o.max_file_size).unwrap_or(DEFAULT_MAX_FILE_SIZE);
-    let include_set = options.as_ref()
+    let include_hidden = options
+        .as_ref()
+        .and_then(|o| o.include_hidden)
+        .unwrap_or(false);
+    let max_file_size = options
+        .as_ref()
+        .and_then(|o| o.max_file_size)
+        .unwrap_or(DEFAULT_MAX_FILE_SIZE);
+    let include_set = options
+        .as_ref()
         .and_then(|o| o.include.as_deref())
-        .and_then(|v| if v.is_empty() { None } else { Some(build_globset(v)) })
+        .and_then(|v| {
+            if v.is_empty() {
+                None
+            } else {
+                Some(build_globset(v))
+            }
+        })
         .flatten();
-    let exclude_set = options.as_ref()
+    let exclude_set = options
+        .as_ref()
         .and_then(|o| o.exclude.as_deref())
-        .and_then(|v| if v.is_empty() { None } else { Some(build_globset(v)) })
+        .and_then(|v| {
+            if v.is_empty() {
+                None
+            } else {
+                Some(build_globset(v))
+            }
+        })
         .flatten();
 
     let pattern = if is_regex {

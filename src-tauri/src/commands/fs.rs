@@ -3,6 +3,16 @@ use std::fs;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 
+fn validate_path(path: &str) -> Result<(), String> {
+    if path.is_empty() {
+        return Err("path must not be empty".to_string());
+    }
+    if path.contains('\0') {
+        return Err("path must not contain NUL bytes".to_string());
+    }
+    Ok(())
+}
+
 #[derive(Debug, Serialize)]
 pub struct DirEntry {
     pub name: String,
@@ -27,16 +37,19 @@ pub struct FileStat {
 
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
+    validate_path(&path)?;
     fs::read_to_string(&path).map_err(|e| format!("Failed to read file '{}': {}", path, e))
 }
 
 #[tauri::command]
 pub fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
+    validate_path(&path)?;
     fs::read(&path).map_err(|e| format!("Failed to read file '{}': {}", path, e))
 }
 
 #[tauri::command]
 pub fn write_file(path: String, content: String) -> Result<(), String> {
+    validate_path(&path)?;
     if let Some(parent) = Path::new(&path).parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create parent dirs for '{}': {}", path, e))?;
@@ -46,6 +59,7 @@ pub fn write_file(path: String, content: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn write_file_bytes(path: String, content: Vec<u8>) -> Result<(), String> {
+    validate_path(&path)?;
     if let Some(parent) = Path::new(&path).parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create parent dirs for '{}': {}", path, e))?;
@@ -55,13 +69,19 @@ pub fn write_file_bytes(path: String, content: Vec<u8>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn read_dir(path: String) -> Result<Vec<DirEntry>, String> {
-    let entries = fs::read_dir(&path).map_err(|e| format!("Failed to read dir '{}': {}", path, e))?;
+    validate_path(&path)?;
+    let entries =
+        fs::read_dir(&path).map_err(|e| format!("Failed to read dir '{}': {}", path, e))?;
 
     let mut result = Vec::new();
     for entry in entries {
         let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
-        let metadata = entry.metadata().map_err(|e| format!("Failed to get metadata: {}", e))?;
-        let file_type = entry.file_type().map_err(|e| format!("Failed to get file type: {}", e))?;
+        let metadata = entry
+            .metadata()
+            .map_err(|e| format!("Failed to get metadata: {}", e))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|e| format!("Failed to get file type: {}", e))?;
 
         let modified = metadata
             .modified()
@@ -82,7 +102,9 @@ pub fn read_dir(path: String) -> Result<Vec<DirEntry>, String> {
     }
 
     result.sort_by(|a, b| {
-        b.is_dir.cmp(&a.is_dir).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+        b.is_dir
+            .cmp(&a.is_dir)
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
 
     Ok(result)
@@ -90,6 +112,7 @@ pub fn read_dir(path: String) -> Result<Vec<DirEntry>, String> {
 
 #[tauri::command]
 pub fn stat(path: String) -> Result<FileStat, String> {
+    validate_path(&path)?;
     let metadata = fs::metadata(&path).map_err(|e| format!("Failed to stat '{}': {}", path, e))?;
 
     let modified = metadata
@@ -119,6 +142,7 @@ pub fn stat(path: String) -> Result<FileStat, String> {
 
 #[tauri::command]
 pub fn mkdir(path: String, recursive: bool) -> Result<(), String> {
+    validate_path(&path)?;
     if recursive {
         fs::create_dir_all(&path)
     } else {
@@ -129,6 +153,7 @@ pub fn mkdir(path: String, recursive: bool) -> Result<(), String> {
 
 #[tauri::command]
 pub fn remove(path: String, recursive: bool) -> Result<(), String> {
+    validate_path(&path)?;
     let meta = fs::metadata(&path).map_err(|e| format!("Failed to stat '{}': {}", path, e))?;
 
     if meta.is_dir() {
@@ -145,6 +170,8 @@ pub fn remove(path: String, recursive: bool) -> Result<(), String> {
 
 #[tauri::command]
 pub fn rename(old_path: String, new_path: String) -> Result<(), String> {
+    validate_path(&old_path)?;
+    validate_path(&new_path)?;
     fs::rename(&old_path, &new_path)
         .map_err(|e| format!("Failed to rename '{}' -> '{}': {}", old_path, new_path, e))
 }
