@@ -254,76 +254,87 @@ fn spawn_debounce_task(
 ) -> (UnboundedSender<PendingEvent>, AbortHandle) {
     let (tx, mut rx) = mpsc::unbounded_channel::<PendingEvent>();
 
-    let handle = tokio::spawn(async move {
-        let mut pending_events: Vec<PendingEvent> = Vec::new();
-        let mut debounce_timer = tokio::time::interval(Duration::from_millis(10));
-        debounce_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    let handle = match tokio::runtime::Handle::try_current() {
+        Ok(h) => h.spawn(async move {
+            let mut pending_events: Vec<PendingEvent> = Vec::new();
+            let mut debounce_timer = tokio::time::interval(Duration::from_millis(10));
+            debounce_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
-        let mut last_event_time: Option<tokio::time::Instant> = None;
+            let mut last_event_time: Option<tokio::time::Instant> = None;
 
-        loop {
-            debounce_timer.tick().await;
+            loop {
+                debounce_timer.tick().await;
 
-            // Collect all pending events
-            while let Ok(event) = rx.try_recv() {
-                pending_events.push(event);
-                last_event_time = Some(tokio::time::Instant::now());
-            }
-
-            // Check if we should emit the batch
-            let should_emit = if let Some(last) = last_event_time {
-                let elapsed = tokio::time::Instant::now().duration_since(last);
-                elapsed >= debounce_duration && !pending_events.is_empty()
-            } else {
-                false
-            };
-
-            if should_emit {
-                // Deduplicate events - keep only the latest event for each path
-                let mut latest_events: HashMap<PathBuf, PendingEvent> = HashMap::new();
-                for event in pending_events.drain(..) {
-                    latest_events.insert(event.path.clone(), event);
+                // Collect all pending events
+                while let Ok(event) = rx.try_recv() {
+                    pending_events.push(event);
+                    last_event_time = Some(tokio::time::Instant::now());
                 }
 
-                // Convert to WatchEvent structs
-                let events: Vec<WatchEvent> = latest_events
-                    .into_values()
-                    .filter_map(|pending| {
-                        // Skip reading content for deletions
-                        let content = if is_deletion(&pending.kind) {
-                            None
-                        } else {
-                            maybe_read_content(&pending.path, emit_content)
+                // Check if we should emit the batch
+                let should_emit = if let Some(last) = last_event_time {
+                    let elapsed = tokio::time::Instant::now().duration_since(last);
+                    elapsed >= debounce_duration && !pending_events.is_empty()
+                } else {
+                    false
+                };
+
+                if should_emit {
+                    // Deduplicate events - keep only the latest event for each path
+                    let mut latest_events: HashMap<PathBuf, PendingEvent> = HashMap::new();
+                    for event in pending_events.drain(..) {
+                        latest_events.insert(event.path.clone(), event);
+                    }
+
+                    // Convert to WatchEvent structs
+                    let events: Vec<WatchEvent> = latest_events
+                        .into_values()
+                        .filter_map(|pending| {
+                            // Skip reading content for deletions
+                            let content = if is_deletion(&pending.kind) {
+                                None
+                            } else {
+                                maybe_read_content(&pending.path, emit_content)
+                            };
+
+                            Some(WatchEvent {
+                                path: pending.path.to_string_lossy().to_string(),
+                                kind: event_kind_to_string(&pending.kind),
+                                is_dir: pending.is_dir,
+                                content,
+                            })
+                        })
+                        .collect();
+
+                    if !events.is_empty() {
+                        let timestamp = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64;
+
+                        let batch = WatchEventBatch {
+                            watch_id,
+                            events,
+                            timestamp,
                         };
 
-                        Some(WatchEvent {
-                            path: pending.path.to_string_lossy().to_string(),
-                            kind: event_kind_to_string(&pending.kind),
-                            is_dir: pending.is_dir,
-                            content,
-                        })
-                    })
-                    .collect();
+                        let _ = app.emit("watch-batch", batch);
+                    }
 
-                if !events.is_empty() {
-                    let timestamp = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_millis() as u64;
-
-                    let batch = WatchEventBatch {
-                        watch_id,
-                        events,
-                        timestamp,
-                    };
-
-                    let _ = app.emit("watch-batch", batch);
+                    last_event_time = None;
                 }
-
-                last_event_time = None;
             }
+        }),
+        Err(_) => {
+            log::warn!("[watch] no Tokio runtime for debounce task, file watching disabled for this watcher");
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let h = rt.spawn(async { std::future::pending::<()>().await });
+            return (tx, h.abort_handle());
         }
-    });
+    };
 
     (tx, handle.abort_handle())
 }

@@ -465,6 +465,7 @@ fn kill_process_tree(pid: u32) -> Result<(), String> {
     }
 
     // Kill the main process
+    #[allow(unsafe_code)]
     unsafe {
         let result = libc::kill(pid as i32, libc::SIGTERM);
         if result != 0 {
@@ -999,6 +1000,7 @@ pub fn term_signal(
         let pid_i32: i32 = pid
             .try_into()
             .map_err(|_| format!("PID {} overflows i32", pid))?;
+        #[allow(unsafe_code)]
         unsafe {
             let result = libc::kill(pid_i32, signal);
             if result != 0 {

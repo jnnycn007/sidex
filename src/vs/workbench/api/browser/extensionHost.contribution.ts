@@ -86,23 +86,21 @@ import './mainThreadProfileContentHandlers.js';
 import './mainThreadDataChannels.js';
 import './mainThreadMeteredConnection.js';
 import './mainThreadBrowsers.js';
+import '../../contrib/extensions/browser/tauriExtensionHost.contribution.js';
 
 export class ExtensionPoints implements IWorkbenchContribution {
+  static readonly ID = 'workbench.contrib.extensionPoints';
 
-	static readonly ID = 'workbench.contrib.extensionPoints';
-
-	constructor(
-		@IInstantiationService private readonly instantiationService: IInstantiationService
-	) {
-		// Classes that handle extension points...
-		this.instantiationService.createInstance(JSONValidationExtensionPoint);
-		this.instantiationService.createInstance(ColorExtensionPoint);
-		this.instantiationService.createInstance(IconExtensionPoint);
-		this.instantiationService.createInstance(TokenClassificationExtensionPoints);
-		this.instantiationService.createInstance(LanguageConfigurationFileHandler);
-		this.instantiationService.createInstance(StatusBarItemsExtensionPoint);
-		this.instantiationService.createInstance(CSSExtensionPoint);
-	}
+  constructor(@IInstantiationService private readonly instantiationService: IInstantiationService) {
+    // Classes that handle extension points...
+    this.instantiationService.createInstance(JSONValidationExtensionPoint);
+    this.instantiationService.createInstance(ColorExtensionPoint);
+    this.instantiationService.createInstance(IconExtensionPoint);
+    this.instantiationService.createInstance(TokenClassificationExtensionPoints);
+    this.instantiationService.createInstance(LanguageConfigurationFileHandler);
+    this.instantiationService.createInstance(StatusBarItemsExtensionPoint);
+    this.instantiationService.createInstance(CSSExtensionPoint);
+  }
 }
 
 registerWorkbenchContribution2(ExtensionPoints.ID, ExtensionPoints, WorkbenchPhase.BlockStartup);

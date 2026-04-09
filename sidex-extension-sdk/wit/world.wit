@@ -1,0 +1,337 @@
+package sidex:extension@0.1.0;
+
+// ---------------------------------------------------------------------------
+// Shared types used across all interfaces
+// ---------------------------------------------------------------------------
+
+interface common-types {
+    record position {
+        line: u32,
+        character: u32,
+    }
+
+    record range {
+        start: position,
+        end: position,
+    }
+
+    record location {
+        uri: string,
+        range: range,
+    }
+
+    record text-edit {
+        range: range,
+        new-text: string,
+    }
+
+    record workspace-edit {
+        edits: list<resource-text-edit>,
+    }
+
+    record resource-text-edit {
+        uri: string,
+        edits: list<text-edit>,
+    }
+
+    enum diagnostic-severity {
+        error,
+        warning,
+        information,
+        hint,
+    }
+
+    record diagnostic {
+        range: range,
+        message: string,
+        severity: diagnostic-severity,
+        source: option<string>,
+        code: option<string>,
+    }
+
+    record completion-item {
+        label: string,
+        kind: option<u32>,
+        detail: option<string>,
+        documentation: option<string>,
+        insert-text: option<string>,
+        sort-text: option<string>,
+        filter-text: option<string>,
+    }
+
+    record completion-list {
+        items: list<completion-item>,
+        is-incomplete: bool,
+    }
+
+    record hover-result {
+        contents: list<string>,
+        range: option<range>,
+    }
+
+    record signature-info {
+        label: string,
+        documentation: option<string>,
+        parameters: list<parameter-info>,
+    }
+
+    record parameter-info {
+        label: string,
+        documentation: option<string>,
+    }
+
+    record signature-help-result {
+        signatures: list<signature-info>,
+        active-signature: u32,
+        active-parameter: u32,
+    }
+
+    record document-symbol {
+        name: string,
+        detail: option<string>,
+        kind: u32,
+        range: range,
+        selection-range: range,
+    }
+
+    record code-action {
+        title: string,
+        kind: option<string>,
+        diagnostics: list<diagnostic>,
+        is-preferred: bool,
+        edit: option<workspace-edit>,
+    }
+
+    record code-lens {
+        range: range,
+        command-id: option<string>,
+        command-title: option<string>,
+    }
+
+    record document-highlight {
+        range: range,
+        kind: u32,
+    }
+
+    record folding-range {
+        start-line: u32,
+        end-line: u32,
+        kind: option<u32>,
+    }
+
+    record inlay-hint {
+        position: position,
+        label: string,
+        kind: option<u32>,
+        padding-left: bool,
+        padding-right: bool,
+    }
+
+    record color-info {
+        range: range,
+        red: f64,
+        green: f64,
+        blue: f64,
+        alpha: f64,
+    }
+
+    record selection-range {
+        range: range,
+    }
+
+    record document-link {
+        range: range,
+        target: option<string>,
+    }
+
+    record rename-result {
+        edits: list<resource-text-edit>,
+    }
+
+    record rename-location {
+        range: range,
+        placeholder: string,
+    }
+
+    record semantic-tokens-legend {
+        token-types: list<string>,
+        token-modifiers: list<string>,
+    }
+
+    record semantic-tokens {
+        data: list<u32>,
+        result-id: option<string>,
+    }
+
+    record document-context {
+        uri: string,
+        language-id: string,
+        version: u32,
+    }
+
+    record command-definition {
+        id: string,
+        title: string,
+    }
+
+    record tree-item {
+        id: string,
+        label: string,
+        tooltip: option<string>,
+        icon: option<string>,
+        collapsible-state: u32,
+    }
+
+    record status-bar-item {
+        id: string,
+        text: string,
+        tooltip: option<string>,
+        command: option<string>,
+        alignment: u32,
+        priority: s32,
+    }
+
+    record file-event {
+        uri: string,
+        kind: file-event-kind,
+    }
+
+    enum file-event-kind {
+        created,
+        changed,
+        deleted,
+    }
+
+    record file-stat {
+        file-type: u32,
+        size: u64,
+        ctime: u64,
+        mtime: u64,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Host API — functions the host provides to extensions
+// ---------------------------------------------------------------------------
+
+interface host-api {
+    use common-types.{
+        position, range, location, text-edit, diagnostic, diagnostic-severity,
+        document-context, command-definition, tree-item, status-bar-item,
+        file-event, file-stat, workspace-edit, resource-text-edit,
+    };
+
+    // -- Logging & output --
+    log-info: func(message: string);
+    log-warn: func(message: string);
+    log-error: func(message: string);
+    show-info-message: func(message: string);
+    show-warn-message: func(message: string);
+    show-error-message: func(message: string);
+    output-channel-append: func(channel: string, text: string);
+
+    // -- Diagnostics --
+    publish-diagnostics: func(uri: string, diagnostics: list<diagnostic>);
+    clear-diagnostics: func(uri: string);
+
+    // -- Workspace --
+    get-workspace-folders: func() -> list<string>;
+    get-configuration: func(section: string, key: string) -> option<string>;
+    find-files: func(pattern: string, max-results: u32) -> list<string>;
+
+    // -- File system (sandboxed to workspace) --
+    read-file: func(uri: string) -> result<string, string>;
+    read-file-bytes: func(uri: string) -> result<list<u8>, string>;
+    write-file: func(uri: string, content: string) -> result<_, string>;
+    stat-file: func(uri: string) -> result<file-stat, string>;
+    list-dir: func(uri: string) -> result<list<string>, string>;
+
+    // -- Document access --
+    get-document-text: func(uri: string) -> option<string>;
+    get-document-language: func(uri: string) -> option<string>;
+
+    // -- Commands --
+    register-command: func(id: string);
+    execute-command: func(id: string, args: string) -> result<string, string>;
+
+    // -- Editor actions --
+    apply-workspace-edit: func(edit: workspace-edit) -> result<_, string>;
+    show-text-document: func(uri: string);
+
+    // -- Status bar --
+    set-status-bar-item: func(item: status-bar-item);
+    remove-status-bar-item: func(id: string);
+
+    // -- File watching --
+    watch-files: func(pattern: string) -> result<u64, string>;
+    unwatch-files: func(watch-id: u64);
+}
+
+// ---------------------------------------------------------------------------
+// Extension API — functions the extension implements
+// ---------------------------------------------------------------------------
+
+interface extension-api {
+    use common-types.{
+        position, range, location, text-edit, document-context,
+        completion-list, hover-result, document-symbol, code-action,
+        code-lens, signature-help-result, document-highlight, folding-range,
+        inlay-hint, color-info, selection-range, document-link,
+        rename-result, rename-location, semantic-tokens, semantic-tokens-legend,
+        command-definition, tree-item, file-event, diagnostic,
+    };
+
+    // -- Lifecycle --
+    activate: func() -> result<_, string>;
+    deactivate: func();
+
+    // -- Metadata --
+    get-name: func() -> string;
+    get-activation-events: func() -> list<string>;
+    get-commands: func() -> list<command-definition>;
+    get-semantic-tokens-legend: func() -> option<semantic-tokens-legend>;
+
+    // -- Language providers --
+    provide-completion: func(ctx: document-context, pos: position) -> option<completion-list>;
+    provide-hover: func(ctx: document-context, pos: position) -> option<hover-result>;
+    provide-definition: func(ctx: document-context, pos: position) -> list<location>;
+    provide-type-definition: func(ctx: document-context, pos: position) -> list<location>;
+    provide-implementation: func(ctx: document-context, pos: position) -> list<location>;
+    provide-declaration: func(ctx: document-context, pos: position) -> list<location>;
+    provide-references: func(ctx: document-context, pos: position) -> list<location>;
+    provide-document-symbols: func(ctx: document-context) -> list<document-symbol>;
+    provide-code-actions: func(ctx: document-context, range: range, diagnostics: list<diagnostic>) -> list<code-action>;
+    provide-code-lenses: func(ctx: document-context) -> list<code-lens>;
+    provide-formatting: func(ctx: document-context, tab-size: u32, insert-spaces: bool) -> list<text-edit>;
+    provide-range-formatting: func(ctx: document-context, range: range, tab-size: u32, insert-spaces: bool) -> list<text-edit>;
+    provide-signature-help: func(ctx: document-context, pos: position) -> option<signature-help-result>;
+    provide-document-highlights: func(ctx: document-context, pos: position) -> list<document-highlight>;
+    provide-rename: func(ctx: document-context, pos: position, new-name: string) -> option<rename-result>;
+    prepare-rename: func(ctx: document-context, pos: position) -> option<rename-location>;
+    provide-folding-ranges: func(ctx: document-context) -> list<folding-range>;
+    provide-inlay-hints: func(ctx: document-context, range: range) -> list<inlay-hint>;
+    provide-document-links: func(ctx: document-context) -> list<document-link>;
+    provide-selection-ranges: func(ctx: document-context, positions: list<position>) -> list<selection-range>;
+    provide-semantic-tokens: func(ctx: document-context) -> option<semantic-tokens>;
+    provide-document-colors: func(ctx: document-context) -> list<color-info>;
+    provide-workspace-symbols: func(query: string) -> list<document-symbol>;
+
+    // -- Commands --
+    execute-command: func(command-id: string, args: string) -> result<string, string>;
+
+    // -- Events --
+    on-file-event: func(events: list<file-event>);
+    on-configuration-changed: func(section: string);
+
+    // -- Tree view (optional) --
+    get-tree-children: func(view-id: string, element-id: option<string>) -> list<tree-item>;
+}
+
+// ---------------------------------------------------------------------------
+// World — the top-level contract
+// ---------------------------------------------------------------------------
+
+world sidex-extension {
+    import host-api;
+    export extension-api;
+}

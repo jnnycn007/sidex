@@ -1,23 +1,12 @@
+use crate::commands::extension_platform::{
+    read_extension_manifest, read_vsix_manifest, sanitize_ext_id, user_extensions_dir,
+    ExtensionManifest,
+};
 use serde::Serialize;
 use std::fs::{self, File};
 use std::io::Read;
-use std::path::{Path, PathBuf};
-
-fn extensions_dir() -> PathBuf {
-    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    home.join(".sidex").join("extensions")
-}
-
-fn sanitize_ext_id(id: &str) -> Result<String, String> {
-    let clean: String = id
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
-        .collect();
-    if clean.is_empty() || clean.contains("..") {
-        return Err(format!("invalid extension id: {id}"));
-    }
-    Ok(clean)
-}
+use std::path::Path;
+use tauri::AppHandle;
 
 #[derive(Debug, Serialize)]
 pub struct InstalledExtension {
@@ -31,7 +20,7 @@ pub struct InstalledExtension {
 pub async fn install_extension(vsix_path: String) -> Result<InstalledExtension, String> {
     let vsix = Path::new(&vsix_path);
     if !vsix.exists() {
-        return Err(format!("VSIX not found: {}", vsix_path));
+        return Err(format!("VSIX not found: {vsix_path}"));
     }
 
     let file = File::open(vsix).map_err(|e| format!("open: {e}"))?;
@@ -40,7 +29,7 @@ pub async fn install_extension(vsix_path: String) -> Result<InstalledExtension, 
     let manifest = read_vsix_manifest(&mut archive)?;
 
     let safe_id = sanitize_ext_id(&manifest.id)?;
-    let ext_dir = extensions_dir().join(&safe_id);
+    let ext_dir = user_extensions_dir().join(&safe_id);
     if ext_dir.exists() {
         fs::remove_dir_all(&ext_dir).map_err(|e| format!("cleanup: {e}"))?;
     }
@@ -89,9 +78,9 @@ pub async fn install_extension(vsix_path: String) -> Result<InstalledExtension, 
 #[tauri::command]
 pub async fn uninstall_extension(extension_id: String) -> Result<(), String> {
     let safe_id = sanitize_ext_id(&extension_id)?;
-    let ext_dir = extensions_dir().join(&safe_id);
+    let ext_dir = user_extensions_dir().join(&safe_id);
     if !ext_dir.exists() {
-        return Err(format!("not installed: {}", extension_id));
+        return Err(format!("not installed: {extension_id}"));
     }
     fs::remove_dir_all(&ext_dir).map_err(|e| format!("remove: {e}"))?;
     log::info!("uninstalled {extension_id}");
@@ -99,84 +88,30 @@ pub async fn uninstall_extension(extension_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn list_installed_extensions() -> Result<Vec<InstalledExtension>, String> {
-    let dir = extensions_dir();
+pub async fn list_installed_extensions(app: AppHandle) -> Result<Vec<InstalledExtension>, String> {
+    let dir = user_extensions_dir();
     if !dir.exists() {
         return Ok(vec![]);
     }
     let mut out = Vec::new();
     let entries = fs::read_dir(&dir).map_err(|e| format!("readdir: {e}"))?;
     for entry in entries.flatten() {
-        let pkg = entry.path().join("package.json");
-        if !pkg.exists() {
-            continue;
-        }
-        if let Ok(raw) = fs::read_to_string(&pkg) {
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
-                let publisher = val
-                    .get("publisher")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
-                let name = val
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
-                out.push(InstalledExtension {
-                    id: format!("{publisher}.{name}"),
-                    name: val
-                        .get("displayName")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or(name)
-                        .to_string(),
-                    version: val
-                        .get("version")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("0.0.0")
-                        .to_string(),
-                    path: entry.path().to_string_lossy().to_string(),
-                });
-            }
+        let path = entry.path();
+        if let Ok(ExtensionManifest {
+            id,
+            display_name,
+            version,
+            path,
+            ..
+        }) = read_extension_manifest(&app, &path)
+        {
+            out.push(InstalledExtension {
+                id,
+                name: display_name,
+                version,
+                path,
+            });
         }
     }
     Ok(out)
-}
-
-struct VsixManifest {
-    id: String,
-    name: String,
-    version: String,
-}
-
-fn read_vsix_manifest(archive: &mut zip::ZipArchive<File>) -> Result<VsixManifest, String> {
-    let pkg_path = "extension/package.json";
-    let mut entry = archive
-        .by_name(pkg_path)
-        .map_err(|_| "VSIX missing extension/package.json".to_string())?;
-    let mut buf = String::new();
-    entry
-        .read_to_string(&mut buf)
-        .map_err(|e| format!("read manifest: {e}"))?;
-    let val: serde_json::Value =
-        serde_json::from_str(&buf).map_err(|e| format!("parse manifest: {e}"))?;
-    let publisher = val
-        .get("publisher")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    let name = val
-        .get("name")
-        .and_then(|v| v.as_str())
-        .ok_or("manifest missing 'name'")?;
-    let version = val
-        .get("version")
-        .and_then(|v| v.as_str())
-        .unwrap_or("0.0.0");
-    Ok(VsixManifest {
-        id: format!("{publisher}.{name}"),
-        name: val
-            .get("displayName")
-            .and_then(|v| v.as_str())
-            .unwrap_or(name)
-            .to_string(),
-        version: version.to_string(),
-    })
 }

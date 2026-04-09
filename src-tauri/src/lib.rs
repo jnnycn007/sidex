@@ -1,7 +1,9 @@
 mod commands;
 
 use commands::debug::DebugAdapterStore;
-use commands::ext_host::ExtHostProcess;
+use commands::ext_host::ExtensionPlatformSupervisor;
+use commands::extension_diagnostics::ExtensionDiagnosticsStore;
+use commands::extension_wasm::WasmExtensionRuntime;
 use commands::index::IndexStore;
 use commands::logging::LoggerStore;
 use commands::process::ProcessStore;
@@ -324,11 +326,6 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         .separator()
         .item(&MenuItemBuilder::with_id("report_issue", "Report Issue").build(app)?)
         .separator()
-        .item(
-            &MenuItemBuilder::with_id("toggle_dev_tools", "Toggle Developer Tools")
-                .accelerator("CmdOrCtrl+Alt+I")
-                .build(app)?,
-        )
         .build()?;
 
     #[cfg(target_os = "macos")]
@@ -394,7 +391,11 @@ pub fn run() {
         .manage(Arc::new(WatchStore::new()))
         .manage(Arc::new(IndexStore::new(true)))
         .manage(Arc::new(LoggerStore::new()))
-        .manage(ExtHostProcess::new())
+        .manage(ExtensionPlatformSupervisor::new())
+        .manage(ExtensionDiagnosticsStore::new())
+        .manage(std::sync::Arc::new(
+            WasmExtensionRuntime::new().expect("failed to initialize WASM runtime"),
+        ))
         .setup(|app| {
             let app_data = app
                 .path()
@@ -546,9 +547,11 @@ pub fn run() {
             commands::git_show,
             commands::git_run,
             commands::git_log_graph,
-            commands::start_extension_host,
-            commands::stop_extension_host,
-            commands::extension_host_port,
+            commands::extension_platform_bootstrap,
+            commands::extension_platform_status,
+            commands::extension_platform_restart,
+            commands::extension_platform_stop,
+            commands::extension_platform_init_data,
             commands::fetch_url,
             commands::fetch_url_text,
             commands::proxy_request,
@@ -569,6 +572,42 @@ pub fn run() {
             commands::install_extension,
             commands::uninstall_extension,
             commands::list_installed_extensions,
+            commands::list_available_extensions,
+            // WASM extensions
+            commands::wasm_load_extension,
+            commands::wasm_unload_extension,
+            commands::wasm_list_extensions,
+            commands::wasm_sync_document,
+            commands::wasm_close_document,
+            commands::wasm_sync_workspace_folders,
+            commands::wasm_provide_completion,
+            commands::wasm_provide_hover,
+            commands::wasm_provide_definition,
+            commands::wasm_provide_references,
+            commands::wasm_provide_document_symbols,
+            commands::wasm_provide_formatting,
+            commands::wasm_provide_completion_all,
+            commands::wasm_provide_hover_all,
+            commands::wasm_provide_definition_all,
+            commands::wasm_provide_document_symbols_all,
+            commands::wasm_provide_formatting_all,
+            // Extension diagnostics
+            commands::extension_report_activated,
+            commands::extension_report_provider_call,
+            commands::extension_report_deactivated,
+            commands::extension_report_error,
+            commands::extension_mark_startup_complete,
+            commands::extension_register_session,
+            commands::extension_runtime_status,
+            commands::extension_runtime_profile,
+            commands::extension_slow_extensions,
+            commands::extension_startup_summary,
+            // Extension bisect
+            commands::extension_bisect_start,
+            commands::extension_bisect_good,
+            commands::extension_bisect_bad,
+            commands::extension_bisect_reset,
+            commands::extension_bisect_state,
             // Logging
             commands::log_create_logger,
             commands::log_write,

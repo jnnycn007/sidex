@@ -6,7 +6,7 @@ authors = ["Siden Technologies Inc"]
 license = "MIT"
 repository = "https://github.com/sidenai/sidex"
 edition = "2021"
-rust-version = "1.77.2"
+rust-version = "1.91.0"
 
 [[bin]]
 name = "SideX"
@@ -48,6 +48,7 @@ sha2 = "0.10"
 md5 = "0.7"
 uuid = { version = "1", features = ["v4"] }
 rand = "0.8"
+chrono = "0.4"
 
 # Path utilities
 pathdiff = "0.2"
@@ -63,8 +64,32 @@ regex = "1"
 crossbeam = "0.8"
 which = "6"
 
+# WASM extension runtime
+wasmtime = { version = "43", default-features = false, features = ["runtime", "component-model", "cranelift", "async"] }
+wasmtime-wasi = "43"
+toml = "0.8"
+anyhow = "1"
+
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+correctness = { level = "deny", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
 
 [profile.release]
 opt-level = "z"

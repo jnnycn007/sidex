@@ -386,6 +386,7 @@ pub fn get_default_shell() -> String {
     // 2. Read from passwd via libc (same as VS Code: os.userInfo().shell)
     #[cfg(unix)]
     {
+        #[allow(unsafe_code)]
         unsafe {
             let uid = libc::getuid();
             let pw = libc::getpwuid(uid);

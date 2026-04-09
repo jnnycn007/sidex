@@ -7,7 +7,15 @@
     "build": "node --max-old-space-size=12288 node_modules/vite/bin/vite.js build",
     "postbuild": "node scripts/postbuild.js",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "lint": "eslint 'src/**/*.ts' 'src/**/*.tsx'",
+    "lint:fix": "eslint --fix 'src/**/*.ts' 'src/**/*.tsx'",
+    "format": "prettier --write 'src/**/*.{ts,tsx,js,json}'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx,js,json}'",
+    "rust:check": "cd src-tauri && cargo check",
+    "rust:clippy": "cd src-tauri && cargo clippy --all-targets -- -D warnings",
+    "rust:fmt": "cd src-tauri && cargo fmt --all -- --check",
+    "rust:fmt:fix": "cd src-tauri && cargo fmt --all"
   },
   "dependencies": {
     "@microsoft/1ds-core-js": "^4.3.11",
