@@ -1,8 +1,5 @@
 {
   "bundle": {
-    "createUpdaterArtifacts": true,
-    "macOS": {
-      "signingIdentity": null
-    }
+    "createUpdaterArtifacts": true
   }
 }
