@@ -6,6 +6,7 @@
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { ITextMateTokenizationService } from './textMateTokenizationFeature.js';
 import { TextMateTokenizationFeature } from './textMateTokenizationFeatureImpl.js';
+import { SidexTextMateTokenizationFeature } from './sidexNativeTextMateTokenizationFeatureImpl.js';
 import {
 	IWorkbenchContribution,
 	WorkbenchPhase,
@@ -18,6 +19,8 @@ import { TokenizationRegistry } from '../../../../editor/common/languages.js';
 import { ITextFileService } from '../../textfile/common/textfiles.js';
 import { StopWatch } from '../../../../base/common/stopwatch.js';
 
+const isTauri = !!(globalThis as any).__SIDEX_TAURI__;
+
 /**
  * Makes sure the ITextMateTokenizationService is instantiated
  */
@@ -27,7 +30,11 @@ class TextMateTokenizationInstantiator implements IWorkbenchContribution {
 	constructor(@ITextMateTokenizationService _textMateTokenizationService: ITextMateTokenizationService) {}
 }
 
-registerSingleton(ITextMateTokenizationService, TextMateTokenizationFeature, InstantiationType.Eager);
+if (isTauri) {
+	registerSingleton(ITextMateTokenizationService, SidexTextMateTokenizationFeature, InstantiationType.Eager);
+} else {
+	registerSingleton(ITextMateTokenizationService, TextMateTokenizationFeature, InstantiationType.Eager);
+}
 
 registerWorkbenchContribution2(
 	TextMateTokenizationInstantiator.ID,

@@ -221,6 +221,9 @@ import './contrib/sash/browser/sash.contribution.js';
 import './contrib/scm/browser/scm.contribution.js';
 import './contrib/scm/browser/git.contribution.js';
 
+// Remote Explorer
+import './contrib/remote/browser/remote.contribution.js';
+
 // Debug
 import './contrib/debug/browser/debug.contribution.js';
 import './contrib/debug/browser/debugEditorContribution.js';

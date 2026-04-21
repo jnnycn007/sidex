@@ -150,7 +150,7 @@ pub fn textmate_load_grammar(
 /// Replaces the theme. Call again whenever the user changes color
 /// scheme; compiled grammars cache scanners independently of the
 /// theme, so the swap is cheap.
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 #[allow(clippy::needless_pass_by_value, clippy::unnecessary_wraps)]
 pub fn textmate_update_theme(
     store: tauri::State<'_, Arc<TextMateStore>>,

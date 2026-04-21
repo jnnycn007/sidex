@@ -167,6 +167,21 @@ export class SideXRemoteService {
 		return toConnection(raw);
 	}
 
+	async connectWsl(distro: string): Promise<RemoteConnection> {
+		const raw = await invoke<RawConnection>('remote_connect_wsl', { distro });
+		return toConnection(raw);
+	}
+
+	async connectContainer(configPath: string): Promise<RemoteConnection> {
+		const raw = await invoke<RawConnection>('remote_connect_container', { configPath });
+		return toConnection(raw);
+	}
+
+	async connectCodespace(name: string, githubToken: string): Promise<RemoteConnection> {
+		const raw = await invoke<RawConnection>('remote_connect_codespace', { name, githubToken });
+		return toConnection(raw);
+	}
+
 	async execSsh(connectionId: number, command: string): Promise<RemoteExecResult> {
 		const raw = await invoke<RawExec>('remote_exec_ssh', { connectionId, command });
 		return { stdout: raw.stdout, stderr: raw.stderr, exitCode: raw.exit_code };

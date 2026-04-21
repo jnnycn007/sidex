@@ -25,8 +25,9 @@ const ALLOWED_HOSTS: &[&str] = &[
     // VS Code asset CDN (VSIX packages + icons)
     "vsassets.io",
     "openvsxorg.blob.core.windows.net",
-    // GitHub (readme images, extension assets)
+    // GitHub (readme images, OAuth, API, codespaces, extension assets)
     "github.com",
+    "api.github.com",
     "raw.githubusercontent.com",
     "objects.githubusercontent.com",
     "codeload.github.com",

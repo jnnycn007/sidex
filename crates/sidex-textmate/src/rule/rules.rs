@@ -194,7 +194,7 @@ impl Rule {
     }
 }
 
-/// Registry of compiled rules keyed by [`RuleId`]. Equivalent to the
+    /// Registry of compiled rules keyed by [`RuleId`]. Equivalent to the
 /// `IRuleRegistry` interface + the `_ruleId2desc` map upstream keeps
 /// inside `Grammar`. Rules are stored behind `Arc` so references can
 /// be handed back through the [`crate::tokenizer::GrammarRuntime`]
@@ -202,13 +202,19 @@ impl Rule {
 #[derive(Debug, Default)]
 pub struct RuleRegistry {
     rules: Vec<Option<std::sync::Arc<Rule>>>,
+    pub(crate) key_to_id: std::collections::HashMap<String, RuleId>,
+    pub(crate) compiling_keys: std::collections::HashSet<String>,
 }
 
 impl RuleRegistry {
     pub fn new() -> Self {
         // Rule ids start at 1 upstream (`0` is reserved). Seed with an
         // empty slot so indexing stays unsigned-friendly.
-        Self { rules: vec![None] }
+        Self {
+            rules: vec![None],
+            key_to_id: std::collections::HashMap::new(),
+            compiling_keys: std::collections::HashSet::new(),
+        }
     }
 
     /// Allocates a new id without storing a rule yet — mirrors upstream's

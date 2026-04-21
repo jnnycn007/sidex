@@ -302,6 +302,62 @@ pub async fn remote_codespaces_list(github_token: String) -> Result<Vec<Codespac
 }
 
 #[tauri::command]
+pub async fn remote_connect_wsl(
+    distro: String,
+    store: State<'_, RemoteManagerStore>,
+) -> Result<RemoteConnectionEntry, String> {
+    let mut mgr = store.inner.lock().await;
+    let id = mgr
+        .connect_wsl(&distro)
+        .await
+        .map_err(|e| format!("WSL connect failed: {e}"))?;
+    let info = mgr
+        .active_connections()
+        .into_iter()
+        .find(|c| c.id == id)
+        .ok_or_else(|| "connection disappeared immediately".to_string())?;
+    Ok(to_entry(info))
+}
+
+#[tauri::command]
+pub async fn remote_connect_container(
+    config_path: String,
+    store: State<'_, RemoteManagerStore>,
+) -> Result<RemoteConnectionEntry, String> {
+    let path = PathBuf::from(config_path);
+    let mut mgr = store.inner.lock().await;
+    let id = mgr
+        .connect_container(&path)
+        .await
+        .map_err(|e| format!("container connect failed: {e}"))?;
+    let info = mgr
+        .active_connections()
+        .into_iter()
+        .find(|c| c.id == id)
+        .ok_or_else(|| "connection disappeared immediately".to_string())?;
+    Ok(to_entry(info))
+}
+
+#[tauri::command]
+pub async fn remote_connect_codespace(
+    name: String,
+    github_token: String,
+    store: State<'_, RemoteManagerStore>,
+) -> Result<RemoteConnectionEntry, String> {
+    let mut mgr = store.inner.lock().await;
+    let id = mgr
+        .connect_codespace(&name, &github_token)
+        .await
+        .map_err(|e| format!("codespace connect failed: {e}"))?;
+    let info = mgr
+        .active_connections()
+        .into_iter()
+        .find(|c| c.id == id)
+        .ok_or_else(|| "connection disappeared immediately".to_string())?;
+    Ok(to_entry(info))
+}
+
+#[tauri::command]
 pub async fn remote_disconnect(
     connection_id: u64,
     store: State<'_, RemoteManagerStore>,

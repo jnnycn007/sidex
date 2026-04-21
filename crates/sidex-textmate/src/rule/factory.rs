@@ -92,6 +92,18 @@ impl RuleFactory {
         let id = registry.reserve();
         desc.id = Some(id.0);
 
+        Self::compile_body(desc, id, registry, grammar_registry, repository);
+        id
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn compile_body<G: GrammarRegistry>(
+        desc: &RawRule,
+        id: RuleId,
+        registry: &mut RuleRegistry,
+        grammar_registry: &G,
+        repository: &RawRepository,
+    ) {
         let rule = if let Some(match_pattern) = desc.match_.clone() {
             let captures = Self::compile_captures(
                 desc.captures.as_ref(),
@@ -205,7 +217,6 @@ impl RuleFactory {
         };
 
         registry.set(id, rule);
-        id
     }
 
     fn compile_captures<G: GrammarRegistry>(
@@ -279,24 +290,15 @@ impl RuleFactory {
                     IncludeReference::Base | IncludeReference::SelfRef => {
                         // `$base` / `$self` read the same key out of the
                         // current repository — upstream does the same.
-                        repository.get(&include).cloned().map(|mut r| {
-                            Self::get_compiled_rule_id(
-                                &mut r,
-                                registry,
-                                grammar_registry,
-                                repository,
-                            )
-                        })
+                        Self::compile_from_repo(&include, repository, registry, grammar_registry)
                     }
                     IncludeReference::Relative { rule_name } => {
-                        repository.get(&rule_name).cloned().map(|mut r| {
-                            Self::get_compiled_rule_id(
-                                &mut r,
-                                registry,
-                                grammar_registry,
-                                repository,
-                            )
-                        })
+                        Self::compile_from_repo(
+                            &rule_name,
+                            repository,
+                            registry,
+                            grammar_registry,
+                        )
                     }
                     IncludeReference::TopLevel { scope_name }
                     | IncludeReference::TopLevelRepository { scope_name, .. } => {
@@ -309,25 +311,16 @@ impl RuleFactory {
                         grammar_registry
                             .external_grammar_repository(&scope_name, repository)
                             .and_then(|external_repo| {
-                                if let Some(name) = external_include {
-                                    external_repo.get(&name).cloned().map(|mut r| {
-                                        Self::get_compiled_rule_id(
-                                            &mut r,
-                                            registry,
-                                            grammar_registry,
-                                            external_repo,
-                                        )
-                                    })
-                                } else {
-                                    external_repo.get("$self").cloned().map(|mut r| {
-                                        Self::get_compiled_rule_id(
-                                            &mut r,
-                                            registry,
-                                            grammar_registry,
-                                            external_repo,
-                                        )
-                                    })
-                                }
+                                let key = external_include
+                                    .as_deref()
+                                    .unwrap_or("$self")
+                                    .to_string();
+                                Self::compile_from_repo(
+                                    &key,
+                                    external_repo,
+                                    registry,
+                                    grammar_registry,
+                                )
                             })
                     }
                 }
@@ -364,6 +357,35 @@ impl RuleFactory {
             has_missing_patterns: expected != out.len(),
             patterns: out,
         }
+    }
+
+    fn compile_from_repo<G: GrammarRegistry>(
+        key: &str,
+        repository: &RawRepository,
+        registry: &mut RuleRegistry,
+        grammar_registry: &G,
+    ) -> Option<RuleId> {
+
+        if registry.compiling_keys.contains(key) {
+            return registry.key_to_id.get(key).copied();
+        }
+
+        let raw = repository.get(key)?;
+
+        if let Some(existing_id) = raw.id {
+            return Some(RuleId(existing_id));
+        }
+
+        let raw = raw.clone();
+
+        let id = registry.reserve();
+        registry.key_to_id.insert(key.to_string(), id);
+        registry.compiling_keys.insert(key.to_string());
+
+        Self::compile_body(&raw, id, registry, grammar_registry, repository);
+
+        registry.compiling_keys.remove(key);
+        Some(id)
     }
 }
 
@@ -436,5 +458,48 @@ mod tests {
             }
             _ => panic!("expected BeginEnd"),
         }
+    }
+
+    #[test]
+    fn circular_include_does_not_overflow() {
+        let mut registry = RuleRegistry::new();
+
+        let mut repo = RawRepository::new();
+        repo.insert(
+            "a".to_string(),
+            RawRule {
+                patterns: Some(vec![RawRule {
+                    include: Some("#b".to_string()),
+                    ..RawRule::default()
+                }]),
+                ..RawRule::default()
+            },
+        );
+        repo.insert(
+            "b".to_string(),
+            RawRule {
+                patterns: Some(vec![RawRule {
+                    include: Some("#a".to_string()),
+                    ..RawRule::default()
+                }]),
+                ..RawRule::default()
+            },
+        );
+
+        let mut top = RawRule {
+            patterns: Some(vec![RawRule {
+                include: Some("#a".to_string()),
+                ..RawRule::default()
+            }]),
+            ..RawRule::default()
+        };
+
+        let id = RuleFactory::get_compiled_rule_id(
+            &mut top,
+            &mut registry,
+            &EmptyGrammarRegistry,
+            &repo,
+        );
+        assert!(registry.get(id).is_some());
     }
 }
