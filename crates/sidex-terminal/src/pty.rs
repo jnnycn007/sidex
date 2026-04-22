@@ -773,7 +773,7 @@ impl PtyProcess {
 
     /// Returns a `TermInfo` snapshot of this terminal.
     pub fn info(&self, handle: TermHandle) -> TermInfo {
-        let total = self.output.lock().map(|b| b.total_count()).unwrap_or(0);
+        let total = self.output.lock().map_or(0, |b| b.total_count());
         TermInfo {
             handle,
             shell: self.shell.clone(),

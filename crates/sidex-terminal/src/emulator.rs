@@ -491,21 +491,17 @@ impl vte::Perform for Performer<'_> {
         }
         let code = params[0];
         match code {
-            b"0" | b"2" => {
-                if params.len() >= 2 {
-                    *self.title = String::from_utf8_lossy(params[1]).into_owned();
-                }
+            b"0" | b"2" if params.len() >= 2 => {
+                *self.title = String::from_utf8_lossy(params[1]).into_owned();
             }
-            b"8" => {
-                if params.len() >= 3 {
-                    let url = String::from_utf8_lossy(params[2]).into_owned();
-                    if url.is_empty() {
-                        *self.current_hyperlink = None;
-                        self.pen.hyperlink = None;
-                    } else {
-                        *self.current_hyperlink = Some(url.clone());
-                        self.pen.hyperlink = Some(url);
-                    }
+            b"8" if params.len() >= 3 => {
+                let url = String::from_utf8_lossy(params[2]).into_owned();
+                if url.is_empty() {
+                    *self.current_hyperlink = None;
+                    self.pen.hyperlink = None;
+                } else {
+                    *self.current_hyperlink = Some(url.clone());
+                    self.pen.hyperlink = Some(url);
                 }
             }
             _ => {}
